@@ -1,0 +1,17 @@
+version: '1.0'
+output_mode: merged
+base_docs_dir: ./docs
+agents:
+  cursor: null
+  cline: null
+  github: null
+  claude: null
+file_mapping:
+  common:
+  - README.md
+  - docs/overview.md
+  project_specific:
+  - docs/architecture.md
+  - docs/api.md
+  agent_specific: null
+global_variables: {}

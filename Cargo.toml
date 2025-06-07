@@ -1,0 +1,52 @@
+[package]
+name = "ai-context-management"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "AI Context Management CLI tool for generating context files for multiple AI coding agents"
+license = "MIT"
+repository = "https://github.com/morooka-akira/ai-context-management"
+keywords = ["ai", "context", "cli", "agents", "tools"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+# CLI framework
+clap = { version = "4.4", features = ["derive"] }
+
+# YAML parsing
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# File system operations
+tokio = { version = "1.0", features = ["full"] }
+
+# Pattern matching for glob patterns
+glob = "0.3"
+
+# Path manipulation
+path-clean = "1.0"
+
+# Async traits
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.8"
+
+[[bin]]
+name = "ai-context"
+path = "src/main.rs"
+
+[lib]
+name = "ai_context_management"
+path = "src/lib.rs"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
