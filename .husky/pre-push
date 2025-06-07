@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run full checks before push
+pnpm run check
+pnpm run test:run
+pnpm run build

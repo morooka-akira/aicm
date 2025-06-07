@@ -1,0 +1,73 @@
+{
+  "name": "ai-context-management",
+  "version": "0.1.0",
+  "description": "AI coding agents context file management CLI tool",
+  "main": "dist/index.js",
+  "bin": {
+    "ai-context": "bin/ai-context.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x bin/ai-context.js",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "lint": "biome lint src/",
+    "lint:fix": "biome lint --apply src/",
+    "format": "biome format --write src/",
+    "format:check": "biome format src/",
+    "check": "biome check src/",
+    "check:fix": "biome check --apply src/",
+    "prepare": "husky install && pnpm run build",
+    "pre-commit": "pnpm run check:fix && pnpm run test:run",
+    "clean": "rm -rf dist bin"
+  },
+  "keywords": [
+    "ai",
+    "context",
+    "cli",
+    "github-copilot",
+    "cursor",
+    "cline",
+    "claude",
+    "typescript"
+  ],
+  "author": "morooka-akira",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.1",
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
+  "dependencies": {
+    "commander": "^11.1.0",
+    "js-yaml": "^4.1.0",
+    "handlebars": "^4.7.8",
+    "fs-extra": "^11.2.0",
+    "chalk": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/js-yaml": "^4.0.9",
+    "@types/fs-extra": "^11.0.4",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "vitest": "^1.1.3",
+    "@vitest/coverage-v8": "^1.1.3",
+    "@biomejs/biome": "^1.4.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,js}": [
+      "biome check --apply",
+      "git add"
+    ]
+  }
+}
