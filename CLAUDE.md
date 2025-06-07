@@ -23,11 +23,45 @@
 
 ## 開発環境セットアップ
 
-プロジェクト構造が確立されたら、このセクションを以下で更新する必要があります：
-- ビルドコマンド
-- テストコマンド  
-- リント/フォーマットコマンド
-- CLI実行コマンド
+### 必要な環境
+- Node.js >= 16.0.0
+- pnpm >= 8.0.0
+
+### 主要コマンド
+```bash
+pnpm install      # 依存関係インストール
+pnpm run dev      # 開発実行 (tsx使用)
+pnpm run build    # TypeScriptビルド
+pnpm run test     # Vitestテスト実行
+pnpm run test:coverage  # カバレッジ付きテスト
+pnpm run check:fix      # Biome リント+フォーマット自動修正
+```
+
+## 開発ルール
+
+### テスト要件
+- **必須**: 各モジュールはVitestでテストを作成すること
+- **カバレッジ**: C1ルート（分岐網羅）を最低限通過すること
+  - 条件分岐、try-catch、関数の全パスをテスト
+  - vitest.config.tsで80%以上のカバレッジを設定済み
+- **作業完了**: 作業終了時は必ずテストが通ることを確認すること
+
+### テスト実行例
+```bash
+# 開発中のテスト
+pnpm run test:watch
+
+# カバレッジ確認
+pnpm run test:coverage
+
+# CI用（全テスト実行）
+pnpm run test:run
+```
+
+### コード品質
+- **Biome**: リンター・フォーマッターで品質管理
+- **Husky**: pre-commit/pre-pushでの自動チェック
+- **TypeScript**: 厳格な型チェック設定
 
 ## アーキテクチャノート
 
@@ -38,11 +72,26 @@
 
 ### ファイル構造
 ```
-ai-context.yaml          # 統一設定ファイル
-docs/concept.md         # 設計概要ドキュメント
-src/                    # CLIツールのソースコード（予定）
-templates/              # 各ツール用テンプレート（予定）
+src/
+├── commands/    # CLIコマンド実装
+├── core/        # コア機能（マージ、設定読み込み等）
+├── agents/      # エージェント実装（GitHub、Cline、Cursor、Claude）
+├── types/       # TypeScript型定義
+├── utils/       # ユーティリティ関数
+└── templates/   # テンプレートファイル
+
+tests/          # テストファイル（Vitest）
+docs/           # 設計ドキュメント
+├── concept.md       # 設計概要
+├── design_doc.md    # 技術仕様書
+└── requirements.md  # 要件定義
 ```
+
+### 実装時の注意点
+- 新しい関数・クラスを作成する際は、対応するテストファイルも同時作成
+- テストファイルは `*.test.ts` の命名規則を使用
+- エラーハンドリングも含めてテストケースを作成
+- モックを使用して外部依存を分離してテスト
 
 ## 参考リンク
 - [Claude Code Memory (CLAUDE.md)](https://docs.anthropic.com/en/docs/claude-code/memory)
