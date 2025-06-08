@@ -21,11 +21,11 @@ cargo build --release
 # テスト実行
 cargo test
 
-# 開発版での実行
+# 開発版での実行（バイナリ名: aicm）
 cargo run -- init
 cargo run -- generate
+cargo run -- generate --agent cursor
 cargo run -- validate
-cargo run -- list-agents
 
 # リント・フォーマット
 cargo fmt     # コードフォーマット

@@ -6,7 +6,7 @@
 
 ## プロジェクト概要
 
-このリポジトリは、複数の AI コーディングエージェント用の context ファイルを統一設定から自動生成する Rust 製コマンドラインツールです。
+このリポジトリは、複数の AI コーディングエージェント用の context ファイルを統一設定から自動生成する Rust 製コマンドラインツール `aicm` です。
 
 ### 目的
 
@@ -17,9 +17,9 @@
 
 ### サポート対象ツール
 
-1. **🎯 Cursor**: `.cursor/rules/*.mdc` ファイル（実装済み）
-2. **🚧 Cline**: `.clinerules/*.md` ファイル（今後実装予定）
-3. **🚧 GitHub Copilot**: `instructions.md` 階層配置（今後実装予定）
-4. **🚧 Claude Code**: `CLAUDE.md`（今後実装予定）
+1. **✅ Cursor**: `.cursor/rules/*.mdc` ファイル（実装済み）
+2. **✅ Cline**: `.clinerules/*.md` ファイル（実装済み）
+3. **✅ GitHub Copilot**: `.github/prompts/*.md` または `.github/copilot-instructions.md`（実装済み）
+4. **✅ Claude Code**: `CLAUDE.md`（実装済み）
 
 詳細な設計概要は `docs/concept.md` を参照してください。
