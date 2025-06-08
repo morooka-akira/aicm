@@ -83,7 +83,7 @@ impl CursorAgent {
             let mut entries = fs::read_dir(rules_dir).await?;
             while let Some(entry) = entries.next_entry().await? {
                 let path = entry.path();
-                if path.is_file() && path.extension().map_or(false, |ext| ext == "mdc") {
+                if path.is_file() && path.extension().is_some_and(|ext| ext == "mdc") {
                     fs::remove_file(path).await?;
                 }
             }
