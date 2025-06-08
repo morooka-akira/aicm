@@ -7,5 +7,5 @@ agents:
     enabled: true
     output_mode: merged
   github:
-    output_mode: split
+    output_mode: merged
   claude: true
