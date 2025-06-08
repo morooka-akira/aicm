@@ -1,6 +1,6 @@
 /*!
  * AI Context Management Tool - Library
- * 
+ *
  * このライブラリは各種AIエージェント用のコンテキスト生成機能を提供します。
  */
 
