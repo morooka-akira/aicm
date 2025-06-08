@@ -1,28 +1,30 @@
 /*!
  * AI Context Management Tool - Main Entry Point
- * 
+ *
  * このファイルはCLIツールのメインエントリーポイントです。
  * 各AI編集エージェント用のコンテキストファイルを生成します。
  */
 
-mod config;
 mod agents;
+mod config;
 mod core;
 mod types;
 
-use crate::config::{ConfigLoader, ConfigError};
 use crate::agents::CursorAgent;
+use crate::config::{ConfigError, ConfigLoader};
 use crate::core::MarkdownMerger;
-use crate::types::{AIContextConfig, CursorConfig, BaseAgent};
+use crate::types::{AIContextConfig, BaseAgent, CursorConfig};
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use anyhow::{Result, Context};
 use std::path::Path;
 use tokio::fs;
 
-/// AI Context Management CLI Tool
+/// AI Code Agent Context Management CLI Tool
 #[derive(Parser)]
-#[command(name = "ai-context")]
-#[command(about = "AI Context Management CLI tool for generating context files for multiple AI coding agents")]
+#[command(name = "aicm")]
+#[command(
+    about = "AI Code Agent Context Management CLI tool for generating context files for multiple AI coding agents"
+)]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -61,24 +63,19 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init { config } => {
-            handle_init(&config).await
-        }
-        Commands::Generate { config, agent } => {
-            handle_generate(&config, agent.as_deref()).await
-        }
-        Commands::Validate { config } => {
-            handle_validate(&config).await
-        }
-        Commands::ListAgents => {
-            handle_list_agents().await
-        }
+        Commands::Init { config } => handle_init(&config).await,
+        Commands::Generate { config, agent } => handle_generate(&config, agent.as_deref()).await,
+        Commands::Validate { config } => handle_validate(&config).await,
+        Commands::ListAgents => handle_list_agents().await,
     }
 }
 
 /// 初期化コマンドの処理
 async fn handle_init(config_path: &str) -> Result<()> {
-    println!("AI Context Management設定ファイルを初期化します: {}", config_path);
+    println!(
+        "AI Code Agent Context Management設定ファイルを初期化します: {}",
+        config_path
+    );
 
     // 既存ファイルの確認
     if Path::new(config_path).exists() {
@@ -88,7 +85,7 @@ async fn handle_init(config_path: &str) -> Result<()> {
 
     // デフォルト設定を生成
     let default_config = ConfigLoader::create_default_config();
-    
+
     // 設定ファイルを保存
     ConfigLoader::save_config(&default_config, config_path)
         .await
@@ -111,7 +108,8 @@ async fn handle_generate(config_path: &str, target_agent: Option<&str>) -> Resul
 
     // Markdownマージ
     let merger = MarkdownMerger::new(config.clone());
-    let merged_content = merger.merge()
+    let merged_content = merger
+        .merge()
         .await
         .context("Markdownファイルのマージに失敗しました")?;
 
@@ -142,7 +140,7 @@ async fn generate_cursor_files(
     merged_content: &crate::types::MergedContent,
 ) -> Result<()> {
     let agent = CursorAgent::new(config.clone(), cursor_config.clone());
-    
+
     // 検証
     let validation = agent.validate();
     if !validation.valid {
@@ -159,14 +157,15 @@ async fn generate_cursor_files(
     }
 
     // ファイル生成
-    let files = agent.generate_files(&merged_content.merged, &merged_content.split)
+    let files = agent
+        .generate_files(&merged_content.merged, &merged_content.split)
         .await
         .context("Cursorファイルの生成に失敗しました")?;
 
     // ファイル出力
     for file in &files {
         let file_path = Path::new(&file.path);
-        
+
         // ディレクトリ作成
         if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent)
@@ -192,7 +191,7 @@ async fn handle_validate(config_path: &str) -> Result<()> {
     match ConfigLoader::load(config_path).await {
         Ok(config) => {
             println!("✅ 設定ファイルは有効です");
-            
+
             // ファイル存在チェック
             let merger = MarkdownMerger::new(config);
             match merger.validate_files().await {

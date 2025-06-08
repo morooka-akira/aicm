@@ -1,4 +1,4 @@
-version: '1.0'
+version: "1.0"
 output_mode: merged
 base_docs_dir: ./docs
 agents:
@@ -8,10 +8,10 @@ agents:
   claude: null
 file_mapping:
   common:
-  - README.md
-  - docs/overview.md
+    - README.md
+    - docs/overview.md
   project_specific:
-  - docs/architecture.md
-  - docs/api.md
+    - docs/architecture.md
+    - docs/api.md
   agent_specific: null
 global_variables: {}

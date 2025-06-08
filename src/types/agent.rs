@@ -94,6 +94,224 @@ impl ValidationResult {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generated_file_default_encoding() {
+        let file = GeneratedFile {
+            path: "test.txt".to_string(),
+            content: "test content".to_string(),
+            encoding: default_encoding(),
+        };
+        
+        assert_eq!(file.encoding, "utf8");
+    }
+
+    #[test]
+    fn test_generated_file_serialization() {
+        let file = GeneratedFile {
+            path: ".cursor/rules/test.mdc".to_string(),
+            content: "---\ndescription: Test\n---\n\n# Test Content".to_string(),
+            encoding: "utf8".to_string(),
+        };
+
+        let yaml = serde_yaml::to_string(&file).unwrap();
+        let deserialized: GeneratedFile = serde_yaml::from_str(&yaml).unwrap();
+
+        assert_eq!(deserialized.path, file.path);
+        assert_eq!(deserialized.content, file.content);
+        assert_eq!(deserialized.encoding, file.encoding);
+    }
+
+    #[test]
+    fn test_split_content() {
+        let split = SplitContent {
+            common: "# Common\nCommon content".to_string(),
+            project_specific: "# Project\nProject content".to_string(),
+            agent_specific: "# Agent\nAgent content".to_string(),
+        };
+
+        let yaml = serde_yaml::to_string(&split).unwrap();
+        let deserialized: SplitContent = serde_yaml::from_str(&yaml).unwrap();
+
+        assert_eq!(deserialized.common, split.common);
+        assert_eq!(deserialized.project_specific, split.project_specific);
+        assert_eq!(deserialized.agent_specific, split.agent_specific);
+    }
+
+    #[test]
+    fn test_merged_content() {
+        let split = SplitContent {
+            common: "Common".to_string(),
+            project_specific: "Project".to_string(),
+            agent_specific: "Agent".to_string(),
+        };
+
+        let merged = MergedContent {
+            merged: "Common\nProject\nAgent".to_string(),
+            split: split.clone(),
+        };
+
+        let yaml = serde_yaml::to_string(&merged).unwrap();
+        let deserialized: MergedContent = serde_yaml::from_str(&yaml).unwrap();
+
+        assert_eq!(deserialized.merged, merged.merged);
+        assert_eq!(deserialized.split.common, split.common);
+    }
+
+    #[test]
+    fn test_validation_result_success() {
+        let result = ValidationResult::success();
+        assert!(result.valid);
+        assert!(result.errors.is_empty());
+        assert!(result.warnings.is_empty());
+    }
+
+    #[test]
+    fn test_validation_result_with_errors() {
+        let errors = vec!["Error 1".to_string(), "Error 2".to_string()];
+        let result = ValidationResult::with_errors(errors.clone());
+        
+        assert!(!result.valid);
+        assert_eq!(result.errors, errors);
+        assert!(result.warnings.is_empty());
+    }
+
+    #[test]
+    fn test_validation_result_with_warnings() {
+        let warnings = vec!["Warning 1".to_string(), "Warning 2".to_string()];
+        let result = ValidationResult::with_warnings(warnings.clone());
+        
+        assert!(result.valid);
+        assert!(result.errors.is_empty());
+        assert_eq!(result.warnings, warnings);
+    }
+
+    #[test]
+    fn test_validation_result_with_errors_and_warnings() {
+        let errors = vec!["Error".to_string()];
+        let warnings = vec!["Warning".to_string()];
+        let result = ValidationResult::with_errors_and_warnings(errors.clone(), warnings.clone());
+        
+        assert!(!result.valid);  // エラーがあるので無効
+        assert_eq!(result.errors, errors);
+        assert_eq!(result.warnings, warnings);
+
+        // エラーがない場合は有効
+        let no_errors_result = ValidationResult::with_errors_and_warnings(vec![], warnings.clone());
+        assert!(no_errors_result.valid);
+        assert!(no_errors_result.errors.is_empty());
+        assert_eq!(no_errors_result.warnings, warnings);
+    }
+
+    #[test]
+    fn test_agent_info() {
+        let info = AgentInfo {
+            name: "test_agent".to_string(),
+            description: "Test Agent for unit testing".to_string(),
+            output_patterns: vec!["*.test".to_string(), "test/**/*".to_string()],
+            supports_split: true,
+        };
+
+        let yaml = serde_yaml::to_string(&info).unwrap();
+        let deserialized: AgentInfo = serde_yaml::from_str(&yaml).unwrap();
+
+        assert_eq!(deserialized.name, info.name);
+        assert_eq!(deserialized.description, info.description);
+        assert_eq!(deserialized.output_patterns, info.output_patterns);
+        assert_eq!(deserialized.supports_split, info.supports_split);
+    }
+
+    #[test]
+    fn test_validation_result_serialization() {
+        let result = ValidationResult {
+            valid: false,
+            errors: vec!["Configuration error".to_string()],
+            warnings: vec!["Deprecated option".to_string()],
+        };
+
+        let yaml = serde_yaml::to_string(&result).unwrap();
+        let deserialized: ValidationResult = serde_yaml::from_str(&yaml).unwrap();
+
+        assert_eq!(deserialized.valid, result.valid);
+        assert_eq!(deserialized.errors, result.errors);
+        assert_eq!(deserialized.warnings, result.warnings);
+    }
+
+    #[test]
+    fn test_generated_file_empty_content() {
+        let file = GeneratedFile {
+            path: "empty.txt".to_string(),
+            content: "".to_string(),
+            encoding: "utf8".to_string(),
+        };
+
+        assert!(file.content.is_empty());
+        assert_eq!(file.path, "empty.txt");
+    }
+
+    #[test]
+    fn test_split_content_empty_sections() {
+        let split = SplitContent {
+            common: "".to_string(),
+            project_specific: "".to_string(),
+            agent_specific: "".to_string(),
+        };
+
+        assert!(split.common.is_empty());
+        assert!(split.project_specific.is_empty());
+        assert!(split.agent_specific.is_empty());
+    }
+
+    #[test]
+    fn test_agent_info_no_patterns() {
+        let info = AgentInfo {
+            name: "minimal_agent".to_string(),
+            description: "Minimal agent".to_string(),
+            output_patterns: vec![],
+            supports_split: false,
+        };
+
+        assert!(info.output_patterns.is_empty());
+        assert!(!info.supports_split);
+    }
+
+    #[test]
+    fn test_validation_result_edge_cases() {
+        // 空のエラーと警告
+        let empty_result = ValidationResult {
+            valid: true,
+            errors: vec![],
+            warnings: vec![],
+        };
+        assert!(empty_result.valid);
+        assert!(empty_result.errors.is_empty());
+        assert!(empty_result.warnings.is_empty());
+
+        // エラーのみ
+        let error_only = ValidationResult {
+            valid: false,
+            errors: vec!["Single error".to_string()],
+            warnings: vec![],
+        };
+        assert!(!error_only.valid);
+        assert!(!error_only.errors.is_empty());
+        assert!(error_only.warnings.is_empty());
+
+        // 警告のみ
+        let warning_only = ValidationResult {
+            valid: true,
+            errors: vec![],
+            warnings: vec!["Single warning".to_string()],
+        };
+        assert!(warning_only.valid);
+        assert!(warning_only.errors.is_empty());
+        assert!(!warning_only.warnings.is_empty());
+    }
+}
+
 /// エージェントの基本情報
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentInfo {

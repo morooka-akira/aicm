@@ -1,39 +1,39 @@
-# AI Context Management Tool 🦀
+# AI Code Agent Context Management Tool 🦀
 
-AIコーディングエージェント用のcontextファイルを統一設定から自動生成するRust製CLIツール
+AI コーディングエージェント用の context ファイルを統一設定から自動生成する Rust 製 CLI ツール
 
 ## ✨ 概要
 
-複数のAIツール（GitHub Copilot、Cline、Cursor、Claude Code）用のcontextファイルを一元管理し、統一設定から各ツール固有のファイル形式を自動生成します。
+複数の AI ツール（GitHub Copilot、Cline、Cursor、Claude Code）用の context ファイルを一元管理し、統一設定から各ツール固有のファイル形式を自動生成します。
 
 ## 🎯 サポート対象ツール
 
-- **🎯 Cursor**: `.cursor/rules/*.mdc` ファイル（YAML frontmatter付き）
+- **🎯 Cursor**: `.cursor/rules/*.mdc` ファイル（YAML frontmatter 付き）
 - **🚧 Cline**: `.clinerules/*.md` ファイル（今後実装予定）
 - **🚧 GitHub Copilot**: `instructions.md` 階層配置（今後実装予定）
 - **🚧 Claude Code**: `CLAUDE.md`（今後実装予定）
 
 ## 🚀 インストール
 
-### Cargoからインストール（推奨）
+### Cargo からインストール（推奨）
 
 ```bash
 # crates.ioからインストール（今後公開予定）
-cargo install ai-context-management
+cargo install aicm
 
 # Gitリポジトリから直接インストール
-cargo install --git https://github.com/morooka-akira/ai-context-management
+cargo install --git https://github.com/morooka-akira/aicm
 
 # ローカルビルド・インストール
-git clone https://github.com/morooka-akira/ai-context-management
-cd ai-context-management
+git clone https://github.com/morooka-akira/aicm
+cd aicm
 cargo install --path .
 ```
 
 ### 必要な環境
 
 - Rust 1.70.0 以上
-- Cargo（Rustと一緒にインストールされます）
+- Cargo（Rust と一緒にインストールされます）
 
 ## 📖 使用方法
 
@@ -41,22 +41,22 @@ cargo install --path .
 
 ```bash
 # プロジェクトディレクトリで設定ファイルを初期化
-ai-context init
+aicm init
 
 # 設定ファイルを編集
 vim ai-context.yaml
 
 # コンテキストファイルを生成
-ai-context generate
+aicm generate
 
 # 特定のエージェントのみ生成
-ai-context generate --agent cursor
+aicm generate --agent cursor
 
 # 設定ファイルを検証
-ai-context validate
+aicm validate
 
 # 利用可能なエージェント一覧を表示
-ai-context list-agents
+aicm list-agents
 ```
 
 ### 設定ファイル例
@@ -64,7 +64,7 @@ ai-context list-agents
 ```yaml
 # ai-context.yaml
 version: "1.0"
-output_mode: merged  # merged | split
+output_mode: merged # merged | split
 base_docs_dir: ./docs
 
 # エージェント固有設定
@@ -98,8 +98,8 @@ file_mapping:
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/morooka-akira/ai-context-management
-cd ai-context-management
+git clone https://github.com/morooka-akira/aicm
+cd aicm
 
 # ビルド
 cargo build
@@ -127,7 +127,7 @@ cargo run -- generate
 ## 📁 プロジェクト構造
 
 ```
-ai-context-management/
+aicm/
 ├── src/
 │   ├── main.rs                 # CLI エントリーポイント
 │   ├── lib.rs                  # ライブラリエントリーポイント
@@ -180,7 +180,7 @@ cargo test --test integration_test
 # 最適化されたバイナリビルド
 cargo build --release
 
-# バイナリは target/release/ai-context に生成されます
+# バイナリは target/release/aicm に生成されます
 ```
 
 ### クロスコンパイル（例）
@@ -198,14 +198,14 @@ cargo build --release --target x86_64-pc-windows-gnu
 
 ## ⚡ パフォーマンス特徴
 
-- **高速起動**: Rustネイティブバイナリによる瞬時起動
+- **高速起動**: Rust ネイティブバイナリによる瞬時起動
 - **低メモリ使用量**: 効率的なメモリ管理
-- **並列処理**: Tokioによる非同期ファイル処理
+- **並列処理**: Tokio による非同期ファイル処理
 - **ゼロコピー**: 不要な文字列コピーの回避
 
 ## 🔒 セキュリティ
 
-- **メモリ安全**: Rustの所有権システムによる保証
+- **メモリ安全**: Rust の所有権システムによる保証
 - **型安全**: コンパイル時の厳密な型チェック
 - **パストラバーサル防止**: 適切なパス正規化
 
@@ -219,8 +219,8 @@ cargo build --release --target x86_64-pc-windows-gnu
 
 ### 開発ガイドライン
 
-- コードはRustfmtでフォーマット（`cargo fmt`）
-- Clippyの警告を解決（`cargo clippy`）
+- コードは Rustfmt でフォーマット（`cargo fmt`）
+- Clippy の警告を解決（`cargo clippy`）
 - テストを追加（`cargo test`）
 - ドキュメントを更新
 
@@ -232,13 +232,13 @@ MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照
 
 このプロジェクトは以下の素晴らしいツールによって支えられています：
 
-- [clap](https://github.com/clap-rs/clap) - CLI構築フレームワーク
+- [clap](https://github.com/clap-rs/clap) - CLI 構築フレームワーク
 - [tokio](https://github.com/tokio-rs/tokio) - 非同期ランタイム
 - [serde](https://github.com/serde-rs/serde) - シリアライゼーション
 - [anyhow](https://github.com/dtolnay/anyhow) - エラーハンドリング
 
 ## 📞 サポート
 
-- バグ報告: [Issues](https://github.com/morooka-akira/ai-context-management/issues)
-- 機能要求: [Issues](https://github.com/morooka-akira/ai-context-management/issues)
-- ディスカッション: [Discussions](https://github.com/morooka-akira/ai-context-management/discussions)
+- バグ報告: [Issues](https://github.com/morooka-akira/aicm/issues)
+- 機能要求: [Issues](https://github.com/morooka-akira/aicm/issues)
+- ディスカッション: [Discussions](https://github.com/morooka-akira/aicm/discussions)

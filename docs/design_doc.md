@@ -1,13 +1,15 @@
-# Design Document - AI Context Management Tool (Rust Edition)
+# Design Document - AI Code Agent Context Management Tool (Rust Edition)
 
 ## 技術仕様書
 
 ### プロジェクト概要
-Cargoパッケージとして配布する、AIコーディングエージェント用contextファイル生成CLIツール
+
+Cargo パッケージとして配布する、AI コーディングエージェント用 context ファイル生成 CLI ツール
 
 ## アーキテクチャ設計
 
 ### 技術スタック
+
 - **言語**: Rust (Edition 2021)
 - **CLI Framework**: clap v4 (derive API)
 - **設定**: YAML (serde_yaml)
@@ -18,8 +20,9 @@ Cargoパッケージとして配布する、AIコーディングエージェン�
 - **テスト**: Built-in test framework + tokio-test
 
 ### プロジェクト構造
+
 ```
-ai-context-management/
+aicm/
 ├── src/
 │   ├── main.rs                 # CLI エントリーポイント
 │   ├── lib.rs                  # ライブラリエントリーポイント
@@ -47,6 +50,7 @@ ai-context-management/
 ## コア設計
 
 ### 1. 設定ファイル型定義
+
 ```rust
 // types/config.rs
 use serde::{Deserialize, Serialize};
@@ -111,6 +115,7 @@ pub enum CursorRuleType {
 ```
 
 ### 2. エージェントトレイト設計
+
 ```rust
 // types/agent.rs
 use async_trait::async_trait;
@@ -119,13 +124,13 @@ use anyhow::Result;
 #[async_trait]
 pub trait BaseAgent: Send + Sync {
     fn get_info(&self) -> AgentInfo;
-    
+
     async fn generate_files(
         &self,
         merged_content: &str,
         split_content: &SplitContent,
     ) -> Result<Vec<GeneratedFile>>;
-    
+
     fn get_output_paths(&self) -> Vec<String>;
     fn validate(&self) -> ValidationResult;
 }
@@ -157,7 +162,8 @@ pub struct ValidationResult {
 }
 ```
 
-### 3. Markdownマージ機能
+### 3. Markdown マージ機能
+
 ```rust
 // core/markdown_merger.rs
 use crate::types::{AIContextConfig, MergedContent, SplitContent};
@@ -176,7 +182,7 @@ impl MarkdownMerger {
 
     pub async fn merge(&self) -> Result<MergedContent, MarkdownMergerError> {
         let base_dir = Path::new(&self.config.base_docs_dir);
-        
+
         // ベースディレクトリの存在確認
         if !base_dir.exists() {
             return Err(MarkdownMergerError::BaseDirectoryNotFound {
@@ -213,6 +219,7 @@ impl MarkdownMerger {
 ```
 
 ### 4. 設定ローダー
+
 ```rust
 // config/loader.rs
 use crate::config::error::ConfigError;
@@ -226,7 +233,7 @@ pub struct ConfigLoader;
 impl ConfigLoader {
     pub async fn load<P: AsRef<Path>>(config_path: P) -> Result<AIContextConfig, ConfigError> {
         let path = config_path.as_ref();
-        
+
         // ファイルの存在確認
         if !path.exists() {
             return Err(ConfigError::FileNotFound {
@@ -236,13 +243,13 @@ impl ConfigLoader {
 
         // ファイル読み込み
         let content = fs::read_to_string(path).await?;
-        
+
         // YAML解析
         let mut config: AIContextConfig = serde_yaml::from_str(&content)?;
-        
+
         // 検証
         Self::validate_config(&mut config)?;
-        
+
         Ok(config)
     }
 
@@ -274,6 +281,7 @@ impl ConfigLoader {
 ## エージェント実装詳細
 
 ### 1. Cursor エージェント
+
 ```rust
 // agents/cursor.rs
 use crate::agents::base::BaseAgentUtils;
@@ -389,17 +397,18 @@ impl BaseAgent for CursorAgent {
 }
 ```
 
-## CLIコマンド実装
+## CLI コマンド実装
 
 ### 1. メインエントリーポイント
+
 ```rust
 // main.rs
 use clap::{Parser, Subcommand};
 use anyhow::Result;
 
 #[derive(Parser)]
-#[command(name = "ai-context")]
-#[command(about = "AI Context Management CLI tool for generating context files for multiple AI coding agents")]
+#[command(name = "aicm")]
+#[command(about = "AI Code Agent Context Management CLI tool for generating context files for multiple AI coding agents")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -443,6 +452,7 @@ async fn main() -> Result<()> {
 ```
 
 ### 2. Init コマンド
+
 ```rust
 async fn handle_init(config_path: &str) -> Result<()> {
     println!("AI Context Management設定ファイルを初期化します: {}", config_path);
@@ -455,7 +465,7 @@ async fn handle_init(config_path: &str) -> Result<()> {
 
     // デフォルト設定を生成
     let default_config = ConfigLoader::create_default_config();
-    
+
     // 設定ファイルを保存
     ConfigLoader::save_config(&default_config, config_path)
         .await
@@ -469,6 +479,7 @@ async fn handle_init(config_path: &str) -> Result<()> {
 ```
 
 ### 3. Generate コマンド
+
 ```rust
 async fn handle_generate(config_path: &str, target_agent: Option<&str>) -> Result<()> {
     println!("コンテキストファイルを生成します: {}", config_path);
@@ -505,18 +516,19 @@ async fn handle_generate(config_path: &str, target_agent: Option<&str>) -> Resul
 }
 ```
 
-## Cargoパッケージ設定
+## Cargo パッケージ設定
 
 ### Cargo.toml
+
 ```toml
 [package]
-name = "ai-context-management"
+name = "aicm"
 version = "0.1.0"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
-description = "AI Context Management CLI tool for generating context files for multiple AI coding agents"
+description = "AI Code Agent Context Management CLI tool for generating context files for multiple AI coding agents"
 license = "MIT"
-repository = "https://github.com/morooka-akira/ai-context-management"
+repository = "https://github.com/morooka-akira/aicm"
 keywords = ["ai", "context", "cli", "agents", "tools"]
 categories = ["command-line-utilities", "development-tools"]
 
@@ -549,11 +561,11 @@ tokio-test = "0.4"
 tempfile = "3.8"
 
 [[bin]]
-name = "ai-context"
+name = "aicm"
 path = "src/main.rs"
 
 [lib]
-name = "ai_context_management"
+name = "ai_code_agent_context_management"
 path = "src/lib.rs"
 
 [profile.release]
@@ -565,39 +577,42 @@ panic = "abort"
 
 ## 配布・インストール
 
-### Cargoでの配布
+### Cargo での配布
+
 ```bash
 # crates.ioからインストール
-cargo install ai-context-management
+cargo install aicm
 
 # Gitリポジトリから直接インストール
-cargo install --git https://github.com/morooka-akira/ai-context-management
+cargo install --git https://github.com/morooka-akira/aicm
 
 # ローカルビルド・インストール
 cargo install --path .
 ```
 
 ### 使用方法
+
 ```bash
 # ヘルプ表示
-ai-context --help
+aicm --help
 
 # 設定ファイル初期化
-ai-context init
+aicm init
 
 # エージェント一覧表示
-ai-context list-agents
+aicm list-agents
 
 # コンテキストファイル生成
-ai-context generate
+aicm generate
 
 # 設定ファイル検証
-ai-context validate
+aicm validate
 ```
 
 ## テスト戦略
 
 ### 1. ユニットテスト
+
 ```rust
 #[cfg(test)]
 mod tests {
@@ -610,10 +625,10 @@ mod tests {
         let config = create_test_config();
         let cursor_config = create_test_cursor_config();
         let agent = CursorAgent::new(config, cursor_config);
-        
+
         let split_content = create_test_split_content();
         let files = agent.generate_files("", &split_content).await.unwrap();
-        
+
         assert_eq!(files.len(), 1);
         assert!(files[0].path.ends_with(".mdc"));
     }
@@ -622,10 +637,10 @@ mod tests {
     async fn test_config_loading() {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("ai-context.yaml");
-        
+
         let config = create_test_config();
         ConfigLoader::save_config(&config, &config_path).await.unwrap();
-        
+
         let loaded_config = ConfigLoader::load(&config_path).await.unwrap();
         assert_eq!(loaded_config.version, config.version);
     }
@@ -633,24 +648,25 @@ mod tests {
 ```
 
 ### 2. 統合テスト
+
 ```rust
 // tests/integration_test.rs
-use ai_context_management::*;
+use ai_code_agent_context_management::*;
 use tempfile::TempDir;
 
 #[tokio::test]
 async fn test_full_workflow() {
     let temp_dir = TempDir::new().unwrap();
     std::env::set_current_dir(&temp_dir).unwrap();
-    
+
     // 初期化
     let result = handle_init("ai-context.yaml").await;
     assert!(result.is_ok());
-    
+
     // 生成
     let result = handle_generate("ai-context.yaml", Some("cursor")).await;
     assert!(result.is_ok());
-    
+
     // 出力ファイルの確認
     assert!(Path::new(".cursor/rules/context.mdc").exists());
 }
@@ -659,16 +675,19 @@ async fn test_full_workflow() {
 ## パフォーマンス考慮
 
 ### 1. 非同期処理
-- Tokioによる効率的なI/O処理
+
+- Tokio による効率的な I/O 処理
 - 並列ファイル読み込み
 - ゼロコピー文字列処理
 
 ### 2. メモリ効率
-- Rustの所有権システムによるメモリ安全性
+
+- Rust の所有権システムによるメモリ安全性
 - 不要なクローンの回避
 - ストリーミング処理対応
 
 ### 3. バイナリサイズ最適化
+
 - LTO（Link Time Optimization）
 - コード生成ユニット最適化
 - デバッグシンボル削除
@@ -676,28 +695,34 @@ async fn test_full_workflow() {
 ## セキュリティ考慮
 
 ### 1. メモリ安全性
-- Rustの型システムによるメモリ安全性保証
+
+- Rust の型システムによるメモリ安全性保証
 - データ競合の静的防止
 
 ### 2. ファイルアクセス
+
 - パス正規化によるディレクトリトラバーサル防止
 - 適切なエラーハンドリング
 
 ### 3. 設定ファイル検証
-- Serdeによる型安全なデシリアライゼーション
+
+- Serde による型安全なデシリアライゼーション
 - 厳密なスキーマ検証
 
 ## 今後の拡張
 
 ### 1. 新しいエージェント追加
-- Cline, GitHub Copilot, Claude Code実装
+
+- Cline, GitHub Copilot, Claude Code 実装
 - プラグインシステムの検討
 
 ### 2. 設定機能強化
+
 - 環境変数による設定オーバーライド
 - 設定ファイルのホットリロード
 
 ### 3. パフォーマンス改善
+
 - 並列処理の強化
 - キャッシュ機能の追加
 - インクリメンタル生成

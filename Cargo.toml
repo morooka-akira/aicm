@@ -1,11 +1,11 @@
 [package]
-name = "ai-context-management"
+name = "aicm"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
-description = "AI Context Management CLI tool for generating context files for multiple AI coding agents"
+authors = ["Morooka Akira <morooka.akira@gmail.com>"]
+description = "AI Code Agent Context Management CLI tool for generating context files for multiple AI coding agents"
 license = "MIT"
-repository = "https://github.com/morooka-akira/ai-context-management"
+repository = "https://github.com/morooka-akira/aicm"
 keywords = ["ai", "context", "cli", "agents", "tools"]
 categories = ["command-line-utilities", "development-tools"]
 
@@ -38,11 +38,11 @@ tokio-test = "0.4"
 tempfile = "3.8"
 
 [[bin]]
-name = "ai-context"
+name = "aicm"
 path = "src/main.rs"
 
 [lib]
-name = "ai_context_management"
+name = "aicm"
 path = "src/lib.rs"
 
 [profile.release]

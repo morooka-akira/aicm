@@ -6,7 +6,7 @@
  */
 
 use crate::types::{AIContextConfig, MergedContent, SplitContent};
-use anyhow::{Result, Context};
+use anyhow::Result;
 use std::path::Path;
 use tokio::fs;
 use thiserror::Error;
@@ -181,5 +181,277 @@ impl MarkdownMerger {
         }
 
         Ok(missing_files)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{OutputMode, FileMapping, AgentConfigs};
+    use std::collections::HashMap;
+    use tempfile::tempdir;
+    use tokio::fs;
+
+    fn create_test_config() -> AIContextConfig {
+        AIContextConfig {
+            version: "1.0".to_string(),
+            output_mode: OutputMode::Merged,
+            base_docs_dir: "./test_docs".to_string(),
+            agents: AgentConfigs::default(),
+            file_mapping: FileMapping {
+                common: vec![
+                    "common/overview.md".to_string(),
+                    "common/guidelines.md".to_string(),
+                ],
+                project_specific: vec![
+                    "project/architecture.md".to_string(),
+                ],
+                agent_specific: Some(HashMap::from([
+                    ("cursor".to_string(), vec!["agents/cursor.md".to_string()]),
+                ])),
+            },
+            global_variables: HashMap::new(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_new_markdown_merger() {
+        let config = create_test_config();
+        let merger = MarkdownMerger::new(config.clone());
+        assert_eq!(merger.config.version, config.version);
+        assert_eq!(merger.config.base_docs_dir, config.base_docs_dir);
+    }
+
+    #[tokio::test]
+    async fn test_merge_base_directory_not_found() {
+        let config = create_test_config();
+        let merger = MarkdownMerger::new(config);
+        
+        let result = merger.merge().await;
+        assert!(result.is_err());
+        
+        match result.unwrap_err() {
+            MarkdownMergerError::BaseDirectoryNotFound { path } => {
+                assert_eq!(path, "./test_docs");
+            }
+            _ => panic!("Expected BaseDirectoryNotFound error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_merge_with_valid_files() {
+        let temp_dir = tempdir().unwrap();
+        let base_dir = temp_dir.path();
+        
+        // テスト用ディレクトリ構造を作成
+        fs::create_dir_all(base_dir.join("common")).await.unwrap();
+        fs::create_dir_all(base_dir.join("project")).await.unwrap();
+        fs::create_dir_all(base_dir.join("agents")).await.unwrap();
+        
+        // テスト用ファイルを作成
+        fs::write(base_dir.join("common/overview.md"), "# Overview\nThis is overview content.").await.unwrap();
+        fs::write(base_dir.join("common/guidelines.md"), "# Guidelines\nThese are guidelines.").await.unwrap();
+        fs::write(base_dir.join("project/architecture.md"), "# Architecture\nSystem architecture.").await.unwrap();
+        fs::write(base_dir.join("agents/cursor.md"), "# Cursor Rules\nCursor specific rules.").await.unwrap();
+        
+        let mut config = create_test_config();
+        config.base_docs_dir = base_dir.to_string_lossy().to_string();
+        
+        let merger = MarkdownMerger::new(config);
+        let result = merger.merge().await;
+        
+        assert!(result.is_ok());
+        let merged_content = result.unwrap();
+        
+        // 各セクションのコンテンツが含まれていることを確認
+        assert!(merged_content.split.common.contains("Overview"));
+        assert!(merged_content.split.common.contains("Guidelines"));
+        assert!(merged_content.split.project_specific.contains("Architecture"));
+        assert!(merged_content.split.agent_specific.contains("Cursor Rules"));
+        
+        // 統合コンテンツが正しく生成されていることを確認
+        assert!(merged_content.merged.contains("Overview"));
+        assert!(merged_content.merged.contains("Architecture"));
+        assert!(merged_content.merged.contains("Cursor Rules"));
+    }
+
+    #[tokio::test]
+    async fn test_read_files_with_missing_files() {
+        let temp_dir = tempdir().unwrap();
+        let base_dir = temp_dir.path();
+        
+        // 一部のファイルのみ作成
+        fs::create_dir_all(base_dir.join("common")).await.unwrap();
+        fs::write(base_dir.join("common/overview.md"), "# Overview\nContent").await.unwrap();
+        
+        let mut config = create_test_config();
+        config.base_docs_dir = base_dir.to_string_lossy().to_string();
+        
+        let merger = MarkdownMerger::new(config);
+        let file_paths = vec![
+            "common/overview.md".to_string(),
+            "common/missing.md".to_string(),
+        ];
+        
+        let result = merger.read_files(&file_paths, base_dir).await;
+        assert!(result.is_ok());
+        
+        let content = result.unwrap();
+        assert!(content.contains("Overview"));
+        // 見つからないファイルは無視されるべき
+        assert!(!content.contains("missing"));
+    }
+
+    #[tokio::test]
+    async fn test_read_single_file_not_found() {
+        let temp_dir = tempdir().unwrap();
+        let base_dir = temp_dir.path();
+        let non_existent_file = base_dir.join("non_existent.md");
+        
+        let config = create_test_config();
+        let merger = MarkdownMerger::new(config);
+        
+        let result = merger.read_single_file(&non_existent_file).await;
+        assert!(result.is_err());
+        
+        match result.unwrap_err() {
+            MarkdownMergerError::FileReadError { path } => {
+                assert!(path.contains("non_existent.md"));
+            }
+            _ => panic!("Expected FileReadError"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_read_single_file_success() {
+        let temp_dir = tempdir().unwrap();
+        let base_dir = temp_dir.path();
+        let test_file = base_dir.join("test.md");
+        let test_content = "# Test\nThis is test content.";
+        
+        fs::write(&test_file, test_content).await.unwrap();
+        
+        let config = create_test_config();
+        let merger = MarkdownMerger::new(config);
+        
+        let result = merger.read_single_file(&test_file).await;
+        assert!(result.is_ok());
+        
+        let content = result.unwrap();
+        assert_eq!(content, test_content);
+    }
+
+    #[tokio::test]
+    async fn test_validate_files_all_exist() {
+        let temp_dir = tempdir().unwrap();
+        let base_dir = temp_dir.path();
+        
+        // 必要なディレクトリとファイルを作成
+        fs::create_dir_all(base_dir.join("common")).await.unwrap();
+        fs::create_dir_all(base_dir.join("project")).await.unwrap();
+        fs::create_dir_all(base_dir.join("agents")).await.unwrap();
+        
+        fs::write(base_dir.join("common/overview.md"), "content").await.unwrap();
+        fs::write(base_dir.join("common/guidelines.md"), "content").await.unwrap();
+        fs::write(base_dir.join("project/architecture.md"), "content").await.unwrap();
+        fs::write(base_dir.join("agents/cursor.md"), "content").await.unwrap();
+        
+        let mut config = create_test_config();
+        config.base_docs_dir = base_dir.to_string_lossy().to_string();
+        
+        let merger = MarkdownMerger::new(config);
+        let result = merger.validate_files().await;
+        
+        assert!(result.is_ok());
+        let missing_files = result.unwrap();
+        assert!(missing_files.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_validate_files_some_missing() {
+        let temp_dir = tempdir().unwrap();
+        let base_dir = temp_dir.path();
+        
+        // 一部のファイルのみ作成
+        fs::create_dir_all(base_dir.join("common")).await.unwrap();
+        fs::write(base_dir.join("common/overview.md"), "content").await.unwrap();
+        // guidelines.md, architecture.md, cursor.md は作成しない
+        
+        let mut config = create_test_config();
+        config.base_docs_dir = base_dir.to_string_lossy().to_string();
+        
+        let merger = MarkdownMerger::new(config);
+        let result = merger.validate_files().await;
+        
+        assert!(result.is_ok());
+        let missing_files = result.unwrap();
+        assert!(!missing_files.is_empty());
+        assert!(missing_files.iter().any(|f| f.contains("guidelines.md")));
+        assert!(missing_files.iter().any(|f| f.contains("architecture.md")));
+        assert!(missing_files.iter().any(|f| f.contains("cursor.md")));
+    }
+
+    #[tokio::test]
+    async fn test_read_agent_specific_files_no_config() {
+        let temp_dir = tempdir().unwrap();
+        let base_dir = temp_dir.path();
+        
+        let mut config = create_test_config();
+        config.base_docs_dir = base_dir.to_string_lossy().to_string();
+        config.file_mapping.agent_specific = None;
+        
+        let merger = MarkdownMerger::new(config);
+        let result = merger.read_agent_specific_files(base_dir).await;
+        
+        assert!(result.is_ok());
+        let content = result.unwrap();
+        assert!(content.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_read_files_empty_content_handling() {
+        let temp_dir = tempdir().unwrap();
+        let base_dir = temp_dir.path();
+        
+        fs::create_dir_all(base_dir.join("test")).await.unwrap();
+        
+        // 空のファイルと通常のファイルを作成
+        fs::write(base_dir.join("test/empty.md"), "").await.unwrap();
+        fs::write(base_dir.join("test/content.md"), "# Content\nActual content").await.unwrap();
+        fs::write(base_dir.join("test/whitespace.md"), "   \n  \t  \n").await.unwrap();
+        
+        let mut config = create_test_config();
+        config.base_docs_dir = base_dir.to_string_lossy().to_string();
+        
+        let merger = MarkdownMerger::new(config);
+        let file_paths = vec![
+            "test/empty.md".to_string(),
+            "test/content.md".to_string(),
+            "test/whitespace.md".to_string(),
+        ];
+        
+        let result = merger.read_files(&file_paths, base_dir).await;
+        assert!(result.is_ok());
+        
+        let content = result.unwrap();
+        // 空のファイルとホワイトスペースのみのファイルは除外される
+        assert!(content.contains("Actual content"));
+        assert!(!content.contains("# test/empty.md"));
+        assert!(!content.contains("# test/whitespace.md"));
+    }
+
+    #[test]
+    fn test_markdown_merger_error_display() {
+        let error = MarkdownMergerError::BaseDirectoryNotFound {
+            path: "/test/path".to_string(),
+        };
+        assert!(error.to_string().contains("ベースディレクトリが見つかりません"));
+        assert!(error.to_string().contains("/test/path"));
+
+        let file_error = MarkdownMergerError::FileReadError {
+            path: "/test/file.md".to_string(),
+        };
+        assert!(file_error.to_string().contains("ファイルの読み込みに失敗しました"));
+        assert!(file_error.to_string().contains("/test/file.md"));
     }
 }

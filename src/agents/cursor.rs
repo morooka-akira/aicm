@@ -219,3 +219,378 @@ impl BaseAgent for CursorAgent {
         BaseAgentUtils::create_validation_result(errors, Some(warnings))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{OutputMode, FileMapping, SplitContent, AgentConfigs};
+    use std::collections::HashMap;
+
+    fn create_test_config() -> AIContextConfig {
+        AIContextConfig {
+            version: "1.0".to_string(),
+            output_mode: OutputMode::Merged,
+            base_docs_dir: "./docs".to_string(),
+            agents: AgentConfigs::default(),
+            file_mapping: FileMapping {
+                common: vec!["common.md".to_string()],
+                project_specific: vec!["project.md".to_string()],
+                agent_specific: None,
+            },
+            global_variables: HashMap::new(),
+        }
+    }
+
+    fn create_test_cursor_config() -> CursorConfig {
+        let mut split_config = HashMap::new();
+        split_config.insert(
+            "common".to_string(),
+            CursorRuleConfig {
+                description: "Common rules".to_string(),
+                rule_type: CursorRuleType::Always,
+                globs: Some(vec!["**/*.rs".to_string(), "**/*.md".to_string()]),
+                always_apply: Some(true),
+            },
+        );
+        split_config.insert(
+            "project".to_string(),
+            CursorRuleConfig {
+                description: "Project specific rules".to_string(),
+                rule_type: CursorRuleType::AutoAttached,
+                globs: Some(vec!["src/**/*".to_string()]),
+                always_apply: None,
+            },
+        );
+
+        CursorConfig {
+            split_config: Some(split_config),
+            additional_instructions: None,
+        }
+    }
+
+    fn create_test_split_content() -> SplitContent {
+        SplitContent {
+            common: "# Common\nCommon content for all projects.".to_string(),
+            project_specific: "# Project\nProject specific information.".to_string(),
+            agent_specific: "# Cursor\nCursor specific rules and guidelines.".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_cursor_agent_new() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config.clone(), cursor_config.clone());
+        
+        assert_eq!(agent.config.version, config.version);
+        assert!(agent.cursor_config.split_config.is_some());
+    }
+
+    #[test]
+    fn test_get_info() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let info = agent.get_info();
+        assert_eq!(info.name, "cursor");
+        assert!(info.description.contains("Cursor"));
+        assert!(info.supports_split);
+        assert!(!info.output_patterns.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_generate_merged_file() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let merged_content = "# Test\nThis is test content.";
+        let result = agent.generate_merged_file(merged_content).await;
+        
+        assert!(result.is_ok());
+        let files = result.unwrap();
+        assert_eq!(files.len(), 1);
+        
+        let file = &files[0];
+        assert!(file.path.contains(".cursor/rules/context.mdc"));
+        assert!(file.content.contains("---"));  // YAML frontmatter
+        assert!(file.content.contains("This is test content"));
+        assert_eq!(file.encoding, "utf8");
+    }
+
+    #[tokio::test]
+    async fn test_generate_split_files() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let split_content = create_test_split_content();
+        let result = agent.generate_split_files(&split_content).await;
+        
+        assert!(result.is_ok());
+        let files = result.unwrap();
+        assert_eq!(files.len(), 2);  // common and project rules
+        
+        // ファイルパスの確認
+        let file_paths: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
+        assert!(file_paths.iter().any(|p| p.contains("common.mdc")));
+        assert!(file_paths.iter().any(|p| p.contains("project.mdc")));
+        
+        // コンテンツの確認
+        for file in &files {
+            assert!(file.content.contains("---"));  // YAML frontmatter
+            assert!(!file.content.trim().is_empty());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_generate_files_merged_mode() {
+        let config = create_test_config();
+        let cursor_config = CursorConfig { 
+            split_config: None,
+            additional_instructions: None,
+        };
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let merged_content = "# Test\nMerged content";
+        let split_content = create_test_split_content();
+        
+        let result = agent.generate_files(merged_content, &split_content).await;
+        assert!(result.is_ok());
+        
+        let files = result.unwrap();
+        assert_eq!(files.len(), 1);  // 統合モードなので1つのファイル
+        assert!(files[0].path.contains("context.mdc"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_files_split_mode() {
+        let mut config = create_test_config();
+        config.output_mode = OutputMode::Split;
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let merged_content = "# Test\nMerged content";
+        let split_content = create_test_split_content();
+        
+        let result = agent.generate_files(merged_content, &split_content).await;
+        assert!(result.is_ok());
+        
+        let files = result.unwrap();
+        assert!(files.len() > 1);  // 分割モードなので複数ファイル
+    }
+
+    #[test]
+    fn test_select_content_for_rule() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        let split_content = create_test_split_content();
+        
+        // common関連のルール
+        let common_content = agent.select_content_for_rule("common", &split_content);
+        assert!(common_content.contains("Common content"));
+        
+        // project関連のルール
+        let project_content = agent.select_content_for_rule("project", &split_content);
+        assert!(project_content.contains("Project specific"));
+        
+        // agent/cursor関連のルール
+        let agent_content = agent.select_content_for_rule("cursor", &split_content);
+        assert!(agent_content.contains("Cursor specific"));
+        
+        // その他（デフォルト）
+        let default_content = agent.select_content_for_rule("unknown", &split_content);
+        assert_eq!(default_content, split_content.common);
+    }
+
+    #[test]
+    fn test_create_frontmatter() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let rule_config = CursorRuleConfig {
+            description: "Test rule".to_string(),
+            rule_type: CursorRuleType::Always,
+            globs: Some(vec!["*.rs".to_string()]),
+            always_apply: Some(true),
+        };
+        
+        let frontmatter = agent.create_frontmatter(&rule_config);
+        
+        // 必須フィールドの確認
+        assert!(frontmatter.contains_key("description"));
+        assert!(frontmatter.contains_key("alwaysApply"));
+        assert!(frontmatter.contains_key("globs"));
+        
+        // 値の確認
+        if let Some(serde_yaml::Value::String(desc)) = frontmatter.get("description") {
+            assert_eq!(desc, "Test rule");
+        } else {
+            panic!("description field should be a string");
+        }
+        
+        if let Some(serde_yaml::Value::Bool(always_apply)) = frontmatter.get("alwaysApply") {
+            assert!(always_apply);
+        } else {
+            panic!("alwaysApply field should be a boolean");
+        }
+    }
+
+    #[test]
+    fn test_create_mdc_file() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let mut frontmatter = HashMap::new();
+        frontmatter.insert(
+            "description".to_string(),
+            serde_yaml::Value::String("Test description".to_string()),
+        );
+        frontmatter.insert(
+            "alwaysApply".to_string(),
+            serde_yaml::Value::Bool(true),
+        );
+        
+        let content = "# Test Content\nThis is test content.";
+        let result = agent.create_mdc_file(&frontmatter, content);
+        
+        assert!(result.is_ok());
+        let mdc_content = result.unwrap();
+        
+        // YAML frontmatterの存在確認
+        assert!(mdc_content.starts_with("---\n"));
+        assert!(mdc_content.contains("---\n\n"));  // frontmatterの終了
+        assert!(mdc_content.contains("This is test content"));
+        assert!(mdc_content.contains("description: Test description"));
+        assert!(mdc_content.contains("alwaysApply: true"));
+    }
+
+    #[test]
+    fn test_get_output_paths_merged_mode() {
+        let config = create_test_config();
+        let cursor_config = CursorConfig { 
+            split_config: None,
+            additional_instructions: None,
+        };
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let paths = agent.get_output_paths();
+        assert_eq!(paths.len(), 1);
+        assert!(paths[0].contains("context.mdc"));
+    }
+
+    #[test]
+    fn test_get_output_paths_split_mode() {
+        let mut config = create_test_config();
+        config.output_mode = OutputMode::Split;
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let paths = agent.get_output_paths();
+        assert!(paths.len() > 1);  // 複数のパス
+        assert!(paths.iter().any(|p| p.contains("common.mdc")));
+        assert!(paths.iter().any(|p| p.contains("project.mdc")));
+    }
+
+    #[test]
+    fn test_validate_successful() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let result = agent.validate();
+        assert!(result.valid);
+        assert!(result.errors.is_empty());
+    }
+
+    #[test]
+    fn test_validate_split_mode_without_config() {
+        let mut config = create_test_config();
+        config.output_mode = OutputMode::Split;
+        let cursor_config = CursorConfig { 
+            split_config: None,
+            additional_instructions: None,
+        };
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let result = agent.validate();
+        assert!(result.valid);  // 警告はあるがエラーではない
+        assert!(!result.warnings.is_empty());
+        assert!(result.warnings[0].contains("split_configが設定されていません"));
+    }
+
+    #[test]
+    fn test_validate_rule_config() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        // 有効な設定
+        let valid_rule = CursorRuleConfig {
+            description: "Valid rule".to_string(),
+            rule_type: CursorRuleType::Always,
+            globs: Some(vec!["*.rs".to_string()]),
+            always_apply: Some(true),
+        };
+        let errors = agent.validate_rule_config("test", &valid_rule);
+        assert!(errors.is_empty());
+        
+        // 無効な設定（空の説明）
+        let invalid_rule = CursorRuleConfig {
+            description: "".to_string(),
+            rule_type: CursorRuleType::Always,
+            globs: Some(vec!["".to_string()]),  // 空のglob
+            always_apply: Some(true),
+        };
+        let errors = agent.validate_rule_config("test", &invalid_rule);
+        assert!(!errors.is_empty());
+        assert!(errors.iter().any(|e| e.contains("description が設定されていません")));
+        assert!(errors.iter().any(|e| e.contains("空の文字列が含まれています")));
+    }
+
+    #[test]
+    fn test_frontmatter_with_auto_attached_type() {
+        let config = create_test_config();
+        let cursor_config = create_test_cursor_config();
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let rule_config = CursorRuleConfig {
+            description: "Auto attached rule".to_string(),
+            rule_type: CursorRuleType::AutoAttached,
+            globs: None,
+            always_apply: None,
+        };
+        
+        let frontmatter = agent.create_frontmatter(&rule_config);
+        
+        // AutoAttachedの場合、alwaysApplyはfalseになるべき
+        if let Some(serde_yaml::Value::Bool(always_apply)) = frontmatter.get("alwaysApply") {
+            assert!(!always_apply);
+        } else {
+            panic!("alwaysApply field should be a boolean");
+        }
+        
+        // globsが設定されていない場合は含まれない
+        assert!(!frontmatter.contains_key("globs"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_split_files_missing_config() {
+        let config = create_test_config();
+        let cursor_config = CursorConfig { 
+            split_config: None,
+            additional_instructions: None,
+        };
+        let agent = CursorAgent::new(config, cursor_config);
+        
+        let split_content = create_test_split_content();
+        let result = agent.generate_split_files(&split_content).await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("split_configが設定されていません"));
+    }
+}
