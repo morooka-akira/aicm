@@ -1,5 +1,5 @@
 version: "1.0"
-output_mode: merged
+output_mode: split
 base_docs_dir: ./ai-context
 agents:
   cursor: true

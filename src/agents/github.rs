@@ -42,6 +42,18 @@ impl GitHubAgent {
         // .github ディレクトリを作成
         fs::create_dir_all(".github").await?;
 
+        // 既存の .github/prompts/ ディレクトリ内の .md ファイルを削除（split モード用）
+        let prompts_dir = self.get_split_prompts_dir();
+        if fs::metadata(&prompts_dir).await.is_ok() {
+            let mut entries = fs::read_dir(&prompts_dir).await?;
+            while let Some(entry) = entries.next_entry().await? {
+                let path = entry.path();
+                if path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
+                    fs::remove_file(path).await?;
+                }
+            }
+        }
+
         Ok(vec![GeneratedFile::new(output_path, content)])
     }
 
@@ -80,6 +92,12 @@ impl GitHubAgent {
 
     /// .github/prompts/ ディレクトリを準備（既存ファイルを削除）
     async fn prepare_prompts_directory(&self, prompts_dir: &str) -> Result<()> {
+        // 既存の .github/copilot-instructions.md ファイルを削除（merged モード用）
+        let merged_file = self.get_merged_output_path();
+        if fs::metadata(&merged_file).await.is_ok() {
+            fs::remove_file(&merged_file).await?;
+        }
+
         // ディレクトリが存在する場合、中身を削除
         if fs::metadata(prompts_dir).await.is_ok() {
             let mut entries = fs::read_dir(prompts_dir).await?;
