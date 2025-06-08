@@ -3,6 +3,9 @@ output_mode: split
 base_docs_dir: ./ai-context
 agents:
   cursor: true
-  cline: true
-  github: true
+  cline:
+    enabled: true
+    output_mode: merged
+  github:
+    output_mode: split
   claude: true

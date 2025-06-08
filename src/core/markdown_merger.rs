@@ -113,7 +113,7 @@ mod tests {
     fn create_test_config(base_dir: &str) -> AIContextConfig {
         AIContextConfig {
             version: "1.0".to_string(),
-            output_mode: OutputMode::Merged,
+            output_mode: Some(OutputMode::Merged),
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }

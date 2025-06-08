@@ -292,8 +292,8 @@ mod tests {
     #[test]
     fn test_get_enabled_agents_with_filter() {
         let mut config = AIContextConfig::default();
-        config.agents.cursor = true;
-        config.agents.claude = true;
+        config.agents.cursor = aicm::types::CursorConfig::Simple(true);
+        config.agents.claude = aicm::types::ClaudeConfig::Simple(true);
 
         // フィルターなし
         let all_agents = get_enabled_agents(&config, None);

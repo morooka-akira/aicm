@@ -28,7 +28,7 @@ impl GitHubAgent {
     pub async fn generate(&self) -> Result<Vec<GeneratedFile>> {
         let merger = MarkdownMerger::new(self.config.clone());
 
-        match self.config.output_mode {
+        match self.config.get_effective_output_mode("github") {
             OutputMode::Merged => self.generate_merged(&merger).await,
             OutputMode::Split => self.generate_split(&merger).await,
         }
@@ -125,7 +125,7 @@ mod tests {
     fn create_test_config(base_dir: &str, output_mode: OutputMode) -> AIContextConfig {
         AIContextConfig {
             version: "1.0".to_string(),
-            output_mode,
+            output_mode: Some(output_mode),
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
