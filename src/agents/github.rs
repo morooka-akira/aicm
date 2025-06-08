@@ -48,7 +48,7 @@ impl GitHubAgent {
             let mut entries = fs::read_dir(&prompts_dir).await?;
             while let Some(entry) = entries.next_entry().await? {
                 let path = entry.path();
-                if path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
+                if path.is_file() && path.extension().is_some_and(|ext| ext == "md") {
                     fs::remove_file(path).await?;
                 }
             }
@@ -103,7 +103,7 @@ impl GitHubAgent {
             let mut entries = fs::read_dir(prompts_dir).await?;
             while let Some(entry) = entries.next_entry().await? {
                 let path = entry.path();
-                if path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
+                if path.is_file() && path.extension().is_some_and(|ext| ext == "md") {
                     fs::remove_file(path).await?;
                 }
             }

@@ -58,17 +58,17 @@ impl ClineAgent {
         let rules_dir = self.get_split_rules_dir();
         self.prepare_rules_directory(&rules_dir).await?;
 
-        for (index, (file_name, content)) in files.iter().enumerate() {
+        for (file_name, content) in files {
             // ファイル名から拡張子を除去してmdファイル名を作成
             let base_name = file_name.trim_end_matches(".md");
             let safe_name = base_name.replace(['/', '\\'], "_"); // パス区切り文字をアンダースコアに変換
 
-            // 数字プレフィックスを追加（Cline Rules 推奨）
-            let numbered_filename = format!("{:02}-{}.md", index + 1, safe_name);
+            // 元のファイル名を使用（数字プレフィックスなし）
+            let output_filename = format!("{}.md", safe_name);
 
             generated_files.push(GeneratedFile::new(
-                format!("{}/{}", rules_dir, numbered_filename),
-                content.clone(),
+                format!("{}/{}", rules_dir, output_filename),
+                content,
             ));
         }
 
@@ -96,7 +96,7 @@ impl ClineAgent {
                 let mut entries = fs::read_dir(rules_dir).await?;
                 while let Some(entry) = entries.next_entry().await? {
                     let path = entry.path();
-                    if path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
+                    if path.is_file() && path.extension().is_some_and(|ext| ext == "md") {
                         fs::remove_file(path).await?;
                     }
                 }
@@ -179,16 +179,16 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 2);
 
-        // ファイル名とパスをチェック（数字プレフィックス付き）
+        // ファイル名とパスをチェック
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
-        assert!(paths.contains(&&".clinerules/01-file1.md".to_string()));
-        assert!(paths.contains(&&".clinerules/02-file2.md".to_string()));
+        assert!(paths.contains(&&".clinerules/file1.md".to_string()));
+        assert!(paths.contains(&&".clinerules/file2.md".to_string()));
 
         // 内容をチェック
         for file in &files {
-            if file.path.contains("01-file1") {
+            if file.path.contains("file1") {
                 assert!(file.content.contains("Content 1"));
-            } else if file.path.contains("02-file2") {
+            } else if file.path.contains("file2") {
                 assert!(file.content.contains("Content 2"));
             }
         }
@@ -212,8 +212,8 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
 
-        // パス区切り文字がアンダースコアに変換され、数字プレフィックスが付いていることを確認
-        assert_eq!(files[0].path, ".clinerules/01-subdir_nested.md");
+        // パス区切り文字がアンダースコアに変換されていることを確認
+        assert_eq!(files[0].path, ".clinerules/subdir_nested.md");
         assert!(files[0].content.contains("Nested content"));
     }
 
@@ -267,11 +267,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_numbered_filename_generation() {
+    async fn test_simple_filename_generation() {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // 複数のテスト用ファイルを作成（順序確認のため）
+        // 複数のテスト用ファイルを作成
         fs::write(docs_path.join("apple.md"), "Apple content")
             .await
             .unwrap();
@@ -288,12 +288,12 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 3);
 
-        // ファイル名の数字プレフィックスを確認
+        // シンプルなファイル名（数字プレフィックスなし）を確認
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
 
-        // アルファベット順でソートされることを確認
-        assert!(paths.iter().any(|p| p.contains("01-apple.md")));
-        assert!(paths.iter().any(|p| p.contains("02-banana.md")));
-        assert!(paths.iter().any(|p| p.contains("03-cherry.md")));
+        // 元のファイル名が保持されることを確認
+        assert!(paths.iter().any(|p| p.contains("apple.md")));
+        assert!(paths.iter().any(|p| p.contains("banana.md")));
+        assert!(paths.iter().any(|p| p.contains("cherry.md")));
     }
 }
