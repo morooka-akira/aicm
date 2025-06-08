@@ -5,7 +5,9 @@
  */
 
 use aicm::agents::claude::ClaudeAgent;
+use aicm::agents::cline::ClineAgent;
 use aicm::agents::cursor::CursorAgent;
+use aicm::agents::github::GitHubAgent;
 use aicm::config::{error::ConfigError, loader::ConfigLoader};
 use aicm::types::{AIContextConfig, GeneratedFile};
 use anyhow::Result;
@@ -249,6 +251,14 @@ async fn generate_agent_files(
         }
         "claude" => {
             let agent = ClaudeAgent::new(config.clone());
+            agent.generate().await
+        }
+        "github" => {
+            let agent = GitHubAgent::new(config.clone());
+            agent.generate().await
+        }
+        "cline" => {
+            let agent = ClineAgent::new(config.clone());
             agent.generate().await
         }
         _ => Err(anyhow::anyhow!("未対応のエージェント: {}", agent_name)),
