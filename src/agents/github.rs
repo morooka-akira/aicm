@@ -6,7 +6,7 @@
  *
  * ファイル命名規則:
  * - 統合モード: .github/copilot-instructions.md
- * - 分割モード: .github/instructions/*.instructions.md
+ * - 分割モード: .github/instructions/ 配下にmdファイルを生成
  */
 
 use crate::core::MarkdownMerger;
@@ -38,7 +38,7 @@ impl GitHubAgent {
     /// 統合モード：.github/copilot-instructions.md ファイルを生成
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let content = merger.merge_all().await?;
-        
+
         // GitHub Copilotは通常のMarkdownファイル（フロントマターなし）
         let instructions_content = self.create_instructions_content(&content);
 
@@ -70,11 +70,11 @@ impl GitHubAgent {
 
         for (file_name, content) in files {
             let instructions_content = self.create_instructions_content(&content);
-            
+
             // ファイル名から拡張子を除去して .instructions.md を追加
             let base_name = file_name.trim_end_matches(".md");
             let safe_name = base_name.replace(['/', '\\'], "_"); // パス区切り文字をアンダースコアに変換
-            
+
             generated_files.push(GeneratedFile::new(
                 format!(".github/instructions/{}.instructions.md", safe_name),
                 instructions_content,
@@ -92,7 +92,7 @@ impl GitHubAgent {
     /// 分割モード用ファイル（.github/instructions/*.instructions.md）を削除
     async fn cleanup_split_files(&self) -> Result<()> {
         use tokio::fs;
-        
+
         // .github/instructions ディレクトリの .instructions.md ファイルを削除
         if fs::metadata(".github/instructions").await.is_ok() {
             let mut entries = fs::read_dir(".github/instructions").await?;
@@ -112,7 +112,10 @@ impl GitHubAgent {
 
     /// 統合モード用ファイル（.github/copilot-instructions.md）を削除
     async fn cleanup_merged_file(&self) -> Result<()> {
-        if fs::metadata(".github/copilot-instructions.md").await.is_ok() {
+        if fs::metadata(".github/copilot-instructions.md")
+            .await
+            .is_ok()
+        {
             fs::remove_file(".github/copilot-instructions.md").await?;
         }
         Ok(())
@@ -223,10 +226,12 @@ mod tests {
         assert_eq!(files.len(), 1);
 
         // パス区切り文字がアンダースコアに変換されていることを確認
-        assert_eq!(files[0].path, ".github/instructions/subdir_nested.instructions.md");
+        assert_eq!(
+            files[0].path,
+            ".github/instructions/subdir_nested.instructions.md"
+        );
         assert!(files[0].content.contains("Nested content"));
     }
-
 
     #[tokio::test]
     async fn test_generate_creates_pure_markdown() {

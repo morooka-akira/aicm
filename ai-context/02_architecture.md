@@ -24,7 +24,10 @@ src/
 ├── agents/                 # エージェント実装
 │   ├── mod.rs
 │   ├── base.rs            # ベースユーティリティ
-│   └── cursor.rs          # Cursor実装
+│   ├── cursor.rs          # Cursor実装（実装済み）
+│   ├── cline.rs           # Cline実装（実装済み）
+│   ├── github.rs          # GitHub Copilot実装（実装済み）
+│   └── claude.rs          # Claude実装（実装済み）
 └── types/                  # 型定義
     ├── mod.rs
     ├── config.rs          # 設定型

@@ -3,11 +3,12 @@
 ## 主要なクレート
 
 - **clap**: CLI 構築フレームワーク（derive API 使用）
-- **tokio**: 非同期ランタイム
+- **tokio**: 非同期ランタイム（full features）
 - **serde + serde_yaml**: 設定ファイル処理
 - **anyhow + thiserror**: エラーハンドリング
 - **async-trait**: 非同期トレイト
 - **path-clean**: パス正規化
+- **glob**: パターンマッチング
 
 ## 開発用クレート
 
