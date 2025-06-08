@@ -5,4 +5,4 @@ agents:
   cursor: true
   cline: false
   github: false
-  claude: false
+  claude: true

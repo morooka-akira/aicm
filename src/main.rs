@@ -4,6 +4,7 @@
  * シンプル化されたCLIエントリーポイント
  */
 
+use aicm::agents::claude::ClaudeAgent;
 use aicm::agents::cursor::CursorAgent;
 use aicm::config::{error::ConfigError, loader::ConfigLoader};
 use aicm::types::{AIContextConfig, GeneratedFile};
@@ -244,6 +245,10 @@ async fn generate_agent_files(
     match agent_name {
         "cursor" => {
             let agent = CursorAgent::new(config.clone());
+            agent.generate().await
+        }
+        "claude" => {
+            let agent = ClaudeAgent::new(config.clone());
             agent.generate().await
         }
         _ => Err(anyhow::anyhow!("未対応のエージェント: {}", agent_name)),

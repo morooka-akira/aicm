@@ -58,7 +58,6 @@ impl Default for AIContextConfig {
 }
 
 impl AIContextConfig {
-
     /// 有効なエージェントのリストを取得
     pub fn enabled_agents(&self) -> Vec<String> {
         let mut agents = Vec::new();
