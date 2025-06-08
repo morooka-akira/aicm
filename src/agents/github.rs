@@ -1,11 +1,12 @@
 /*!
- * AI Context Management Tool - GitHub Agent
+ * AI Context Management Tool - GitHub Copilot Agent
  *
- * GitHub エージェントの実装
- * 仕様: https://code.visualstudio.com/docs/copilot/copilot-customization#_use-instructionsmd-files
+ * GitHub Copilot用のコンテキストファイル生成エージェント
+ * 仕様: https://code.visualstudio.com/docs/copilot/copilot-customization
  *
- * Split モード: .github/prompts/ フォルダに複数の .md ファイル
- * Merged モード: .github/copilot-instructions.md 単一ファイル
+ * ファイル命名規則:
+ * - 統合モード: .github/copilot-instructions.md
+ * - 分割モード: .github/instructions/*.instructions.md
  */
 
 use crate::core::MarkdownMerger;
@@ -13,18 +14,18 @@ use crate::types::{AIContextConfig, GeneratedFile, OutputMode};
 use anyhow::Result;
 use tokio::fs;
 
-/// GitHub エージェント
+/// GitHub Copilotエージェント
 pub struct GitHubAgent {
     config: AIContextConfig,
 }
 
 impl GitHubAgent {
-    /// 新しい GitHub エージェントを作成
+    /// 新しいGitHub Copilotエージェントを作成
     pub fn new(config: AIContextConfig) -> Self {
         Self { config }
     }
 
-    /// GitHub 用ファイルを生成
+    /// GitHub Copilot用ファイルを生成
     pub async fn generate(&self) -> Result<Vec<GeneratedFile>> {
         let merger = MarkdownMerger::new(self.config.clone());
 
@@ -34,83 +35,86 @@ impl GitHubAgent {
         }
     }
 
-    /// Merged モード：.github/copilot-instructions.md 単一ファイル
+    /// 統合モード：.github/copilot-instructions.md ファイルを生成
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let content = merger.merge_all().await?;
-        let output_path = self.get_merged_output_path();
+        
+        // GitHub Copilotは通常のMarkdownファイル（フロントマターなし）
+        let instructions_content = self.create_instructions_content(&content);
 
-        // .github ディレクトリを作成
-        fs::create_dir_all(".github").await?;
+        // 既存の *.prompt.md ファイルを削除（split モード用）
+        self.cleanup_split_files().await?;
 
-        // 既存の .github/prompts/ ディレクトリ内の .md ファイルを削除（split モード用）
-        let prompts_dir = self.get_split_prompts_dir();
-        if fs::metadata(&prompts_dir).await.is_ok() {
-            let mut entries = fs::read_dir(&prompts_dir).await?;
-            while let Some(entry) = entries.next_entry().await? {
-                let path = entry.path();
-                if path.is_file() && path.extension().is_some_and(|ext| ext == "md") {
-                    fs::remove_file(path).await?;
-                }
-            }
-        }
+        // .githubディレクトリを作成
+        tokio::fs::create_dir_all(".github").await?;
 
-        Ok(vec![GeneratedFile::new(output_path, content)])
+        Ok(vec![GeneratedFile::new(
+            ".github/copilot-instructions.md".to_string(),
+            instructions_content,
+        )])
     }
 
-    /// Split モード：.github/prompts/ フォルダに複数の .md ファイル
+    /// 分割モード：.github/instructions/xxx.instructions.md ファイルを生成
     async fn generate_split(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let files = merger.get_individual_files().await?;
         let mut generated_files = Vec::new();
 
-        // .github/prompts/ ディレクトリを準備
-        let prompts_dir = self.get_split_prompts_dir();
-        self.prepare_prompts_directory(&prompts_dir).await?;
+        // 既存の .github/copilot-instructions.md ファイルを削除（merged モード用）
+        self.cleanup_merged_file().await?;
+
+        // .github/instructions ディレクトリを作成
+        tokio::fs::create_dir_all(".github/instructions").await?;
+
+        // 既存の .instructions.md ファイルを削除
+        self.cleanup_split_files().await?;
 
         for (file_name, content) in files {
-            // ファイル名から拡張子を除去してmdファイル名を作成
+            let instructions_content = self.create_instructions_content(&content);
+            
+            // ファイル名から拡張子を除去して .instructions.md を追加
             let base_name = file_name.trim_end_matches(".md");
             let safe_name = base_name.replace(['/', '\\'], "_"); // パス区切り文字をアンダースコアに変換
-
+            
             generated_files.push(GeneratedFile::new(
-                format!("{}/{}.md", prompts_dir, safe_name),
-                content,
+                format!(".github/instructions/{}.instructions.md", safe_name),
+                instructions_content,
             ));
         }
 
         Ok(generated_files)
     }
 
-    /// Merged モードの出力パスを取得
-    fn get_merged_output_path(&self) -> String {
-        ".github/copilot-instructions.md".to_string()
+    /// GitHub Copilot用のコンテンツを作成（純粋なMarkdown、フロントマターなし）
+    fn create_instructions_content(&self, content: &str) -> String {
+        content.to_string()
     }
 
-    /// Split モードのプロンプトディレクトリのパスを取得
-    fn get_split_prompts_dir(&self) -> String {
-        ".github/prompts".to_string()
-    }
-
-    /// .github/prompts/ ディレクトリを準備（既存ファイルを削除）
-    async fn prepare_prompts_directory(&self, prompts_dir: &str) -> Result<()> {
-        // 既存の .github/copilot-instructions.md ファイルを削除（merged モード用）
-        let merged_file = self.get_merged_output_path();
-        if fs::metadata(&merged_file).await.is_ok() {
-            fs::remove_file(&merged_file).await?;
-        }
-
-        // ディレクトリが存在する場合、中身を削除
-        if fs::metadata(prompts_dir).await.is_ok() {
-            let mut entries = fs::read_dir(prompts_dir).await?;
+    /// 分割モード用ファイル（.github/instructions/*.instructions.md）を削除
+    async fn cleanup_split_files(&self) -> Result<()> {
+        use tokio::fs;
+        
+        // .github/instructions ディレクトリの .instructions.md ファイルを削除
+        if fs::metadata(".github/instructions").await.is_ok() {
+            let mut entries = fs::read_dir(".github/instructions").await?;
             while let Some(entry) = entries.next_entry().await? {
                 let path = entry.path();
-                if path.is_file() && path.extension().is_some_and(|ext| ext == "md") {
-                    fs::remove_file(path).await?;
+                if path.is_file() {
+                    if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                        if file_name.ends_with(".instructions.md") {
+                            fs::remove_file(path).await?;
+                        }
+                    }
                 }
             }
         }
+        Ok(())
+    }
 
-        // ディレクトリを作成（存在しない場合）
-        fs::create_dir_all(prompts_dir).await?;
+    /// 統合モード用ファイル（.github/copilot-instructions.md）を削除
+    async fn cleanup_merged_file(&self) -> Result<()> {
+        if fs::metadata(".github/copilot-instructions.md").await.is_ok() {
+            fs::remove_file(".github/copilot-instructions.md").await?;
+        }
         Ok(())
     }
 }
@@ -187,8 +191,8 @@ mod tests {
 
         // ファイル名とパスをチェック
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
-        assert!(paths.contains(&&".github/prompts/file1.md".to_string()));
-        assert!(paths.contains(&&".github/prompts/file2.md".to_string()));
+        assert!(paths.contains(&&".github/instructions/file1.instructions.md".to_string()));
+        assert!(paths.contains(&&".github/instructions/file2.instructions.md".to_string()));
 
         // 内容をチェック
         for file in &files {
@@ -219,58 +223,10 @@ mod tests {
         assert_eq!(files.len(), 1);
 
         // パス区切り文字がアンダースコアに変換されていることを確認
-        assert_eq!(files[0].path, ".github/prompts/subdir_nested.md");
+        assert_eq!(files[0].path, ".github/instructions/subdir_nested.instructions.md");
         assert!(files[0].content.contains("Nested content"));
     }
 
-    #[tokio::test]
-    async fn test_get_merged_output_path() {
-        let config = create_test_config("./docs", OutputMode::Merged);
-        let agent = GitHubAgent::new(config);
-
-        let output_path = agent.get_merged_output_path();
-        assert_eq!(output_path, ".github/copilot-instructions.md");
-    }
-
-    #[tokio::test]
-    async fn test_get_split_prompts_dir() {
-        let config = create_test_config("./docs", OutputMode::Split);
-        let agent = GitHubAgent::new(config);
-
-        let prompts_dir = agent.get_split_prompts_dir();
-        assert_eq!(prompts_dir, ".github/prompts");
-    }
-
-    #[tokio::test]
-    async fn test_prepare_prompts_directory() {
-        let temp_dir = tempdir().unwrap();
-        let prompts_dir = temp_dir.path().join(".github/prompts");
-        let config = create_test_config("./docs", OutputMode::Split);
-        let agent = GitHubAgent::new(config);
-
-        // ディレクトリを作成
-        fs::create_dir_all(&prompts_dir).await.unwrap();
-
-        // 既存のmdファイルを作成
-        let existing_md = prompts_dir.join("old_file.md");
-        let other_file = prompts_dir.join("keep_me.txt");
-        fs::write(&existing_md, "old content").await.unwrap();
-        fs::write(&other_file, "keep this").await.unwrap();
-
-        // ファイルが存在することを確認
-        assert!(existing_md.exists());
-        assert!(other_file.exists());
-
-        // prepare_prompts_directory を実行
-        agent
-            .prepare_prompts_directory(&prompts_dir.to_string_lossy())
-            .await
-            .unwrap();
-
-        // mdファイルは削除され、他のファイルは残っていることを確認
-        assert!(!existing_md.exists());
-        assert!(other_file.exists());
-    }
 
     #[tokio::test]
     async fn test_generate_creates_pure_markdown() {
@@ -296,21 +252,5 @@ mod tests {
         // 内容は含まれていることを確認
         assert!(content.contains("# Test"));
         assert!(content.contains("Content here"));
-    }
-
-    #[tokio::test]
-    async fn test_split_vs_merged_output_paths() {
-        let config_split = create_test_config("./docs", OutputMode::Split);
-        let config_merged = create_test_config("./docs", OutputMode::Merged);
-
-        let agent_split = GitHubAgent::new(config_split);
-        let agent_merged = GitHubAgent::new(config_merged);
-
-        // Split モードとMerged モードで異なるパスを使用することを確認
-        assert_eq!(agent_split.get_split_prompts_dir(), ".github/prompts");
-        assert_eq!(
-            agent_merged.get_merged_output_path(),
-            ".github/copilot-instructions.md"
-        );
     }
 }
