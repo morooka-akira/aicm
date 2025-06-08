@@ -39,6 +39,13 @@ impl ClineAgent {
         let content = merger.merge_all().await?;
         let output_path = self.get_merged_output_path();
 
+        // 既存の .clinerules ディレクトリ（split モード用）が存在する場合は削除
+        if let Ok(metadata) = fs::metadata(&output_path).await {
+            if metadata.is_dir() {
+                fs::remove_dir_all(&output_path).await?;
+            }
+        }
+
         Ok(vec![GeneratedFile::new(output_path, content)])
     }
 
