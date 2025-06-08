@@ -1,30 +1,20 @@
 /*!
- * AI Context Management Tool - Main Entry Point
+ * AI Context Management Tool - Main CLI (Simplified)
  *
- * このファイルはCLIツールのメインエントリーポイントです。
- * 各AI編集エージェント用のコンテキストファイルを生成します。
+ * シンプル化されたCLIエントリーポイント
  */
 
-mod agents;
-mod config;
-mod core;
-mod types;
-
-use crate::agents::CursorAgent;
-use crate::config::{ConfigError, ConfigLoader};
-use crate::core::MarkdownMerger;
-use crate::types::{AIContextConfig, BaseAgent, CursorConfig};
-use anyhow::{Context, Result};
+use aicm::agents::cursor::CursorAgent;
+use aicm::config::{error::ConfigError, loader::ConfigLoader};
+use aicm::types::{AIContextConfig, GeneratedFile};
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::path::Path;
 use tokio::fs;
 
-/// AI Code Agent Context Management CLI Tool
 #[derive(Parser)]
 #[command(name = "aicm")]
-#[command(
-    about = "AI Code Agent Context Management CLI tool for generating context files for multiple AI coding agents"
-)]
+#[command(about = "AI Context Management Tool - 複数のAIツール用設定ファイルを統一管理")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -33,99 +23,78 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize a new AI context configuration
-    Init {
-        /// Configuration file path
-        #[arg(short, long, default_value = "ai-context.yaml")]
-        config: String,
-    },
-    /// Generate context files for configured agents
+    /// プロジェクトを初期化（設定ファイルとドキュメントディレクトリを作成）
+    Init,
+    /// AI用設定ファイルを生成
     Generate {
-        /// Configuration file path
-        #[arg(short, long, default_value = "ai-context.yaml")]
-        config: String,
-        /// Target agent (cursor, cline, github, claude)
-        #[arg(short, long)]
+        /// 特定のエージェントのみ生成
+        #[arg(long)]
         agent: Option<String>,
     },
-    /// Validate configuration file
-    Validate {
-        /// Configuration file path
-        #[arg(short, long, default_value = "ai-context.yaml")]
-        config: String,
-    },
-    /// List available agents
-    ListAgents,
+    /// 設定ファイルを検証
+    Validate,
 }
+
+const CONFIG_FILE: &str = "ai-context.yaml";
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init { config } => handle_init(&config).await,
-        Commands::Generate { config, agent } => handle_generate(&config, agent.as_deref()).await,
-        Commands::Validate { config } => handle_validate(&config).await,
-        Commands::ListAgents => handle_list_agents().await,
+        Commands::Init => handle_init().await,
+        Commands::Generate { agent } => handle_generate(agent).await,
+        Commands::Validate => handle_validate().await,
     }
 }
 
-/// 初期化コマンドの処理
-async fn handle_init(config_path: &str) -> Result<()> {
-    println!(
-        "AI Code Agent Context Management設定ファイルを初期化します: {}",
-        config_path
-    );
+/// init コマンドの処理
+async fn handle_init() -> Result<()> {
+    println!("プロジェクトを初期化します...");
 
-    // 既存ファイルの確認
-    if Path::new(config_path).exists() {
-        eprintln!("設定ファイルは既に存在します: {}", config_path);
-        return Ok(());
+    // 設定ファイルが既に存在するかチェック
+    if Path::new(CONFIG_FILE).exists() {
+        println!("⚠️  {}は既に存在します", CONFIG_FILE);
+    } else {
+        // デフォルト設定ファイルを作成
+        let config = ConfigLoader::create_default(CONFIG_FILE).await?;
+        println!("✅ {}を作成しました", CONFIG_FILE);
+
+        // ドキュメントディレクトリを作成
+        create_docs_directory(&config).await?;
     }
-
-    // デフォルト設定を生成
-    let default_config = ConfigLoader::create_default_config();
-
-    // 設定ファイルを保存
-    ConfigLoader::save_config(&default_config, config_path)
-        .await
-        .context("設定ファイルの保存に失敗しました")?;
-
-    println!("✅ 設定ファイルを作成しました: {}", config_path);
-    println!("📝 設定ファイルを編集してプロジェクトに合わせてカスタマイズしてください");
 
     Ok(())
 }
 
-/// 生成コマンドの処理
-async fn handle_generate(config_path: &str, target_agent: Option<&str>) -> Result<()> {
-    println!("コンテキストファイルを生成します: {}", config_path);
+/// generate コマンドの処理
+async fn handle_generate(agent_filter: Option<String>) -> Result<()> {
+    println!("コンテキストファイルを生成します: {}", CONFIG_FILE);
 
-    // 設定読み込み
-    let config = ConfigLoader::load(config_path)
-        .await
-        .context("設定ファイルの読み込みに失敗しました")?;
+    // 設定ファイルを読み込み
+    let config = load_config().await?;
 
-    // Markdownマージ
-    let merger = MarkdownMerger::new(config.clone());
-    let merged_content = merger
-        .merge()
-        .await
-        .context("Markdownファイルのマージに失敗しました")?;
+    // 有効なエージェントを取得
+    let enabled_agents = get_enabled_agents(&config, agent_filter);
 
-    // エージェント別生成
-    match target_agent {
-        Some("cursor") | None => {
-            if let Some(cursor_config) = &config.agents.cursor {
-                generate_cursor_files(&config, cursor_config, &merged_content).await?;
-            } else if target_agent.is_some() {
-                eprintln!("⚠️  Cursor設定が見つかりません");
+    if enabled_agents.is_empty() {
+        println!("❌ 有効なエージェントがありません");
+        println!("💡 ai-context.yaml の agents セクションでエージェントを有効にしてください");
+        return Ok(());
+    }
+
+    // 各エージェントのファイルを生成
+    for agent_name in enabled_agents {
+        match generate_agent_files(&config, &agent_name).await {
+            Ok(files) => {
+                for file in files {
+                    write_generated_file(&file).await?;
+                    println!("📄 {}", file.path);
+                }
             }
-        }
-        Some(agent) => {
-            eprintln!("❌ 未対応のエージェント: {}", agent);
-            eprintln!("サポートされているエージェント: cursor");
-            return Ok(());
+            Err(e) => {
+                println!("❌ {}の生成でエラーが発生しました: {}", agent_name, e);
+            }
         }
     }
 
@@ -133,101 +102,203 @@ async fn handle_generate(config_path: &str, target_agent: Option<&str>) -> Resul
     Ok(())
 }
 
-/// Cursorファイル生成
-async fn generate_cursor_files(
-    config: &AIContextConfig,
-    cursor_config: &CursorConfig,
-    merged_content: &crate::types::MergedContent,
-) -> Result<()> {
-    let agent = CursorAgent::new(config.clone(), cursor_config.clone());
+/// validate コマンドの処理
+async fn handle_validate() -> Result<()> {
+    println!("設定ファイルを検証します: {}", CONFIG_FILE);
 
-    // 検証
-    let validation = agent.validate();
-    if !validation.valid {
-        eprintln!("❌ Cursor設定の検証に失敗しました:");
-        for error in &validation.errors {
-            eprintln!("  - {}", error);
-        }
-        return Ok(());
-    }
-
-    // 警告表示
-    for warning in &validation.warnings {
-        eprintln!("⚠️  {}", warning);
-    }
-
-    // ファイル生成
-    let files = agent
-        .generate_files(&merged_content.merged, &merged_content.split)
-        .await
-        .context("Cursorファイルの生成に失敗しました")?;
-
-    // ファイル出力
-    for file in &files {
-        let file_path = Path::new(&file.path);
-
-        // ディレクトリ作成
-        if let Some(parent) = file_path.parent() {
-            fs::create_dir_all(parent)
-                .await
-                .context(format!("ディレクトリの作成に失敗しました: {:?}", parent))?;
-        }
-
-        // ファイル書き込み
-        fs::write(file_path, &file.content)
-            .await
-            .context(format!("ファイルの書き込みに失敗しました: {:?}", file_path))?;
-
-        println!("📄 {}", file.path);
-    }
-
-    Ok(())
-}
-
-/// 検証コマンドの処理
-async fn handle_validate(config_path: &str) -> Result<()> {
-    println!("設定ファイルを検証します: {}", config_path);
-
-    match ConfigLoader::load(config_path).await {
+    match load_config().await {
         Ok(config) => {
             println!("✅ 設定ファイルは有効です");
 
-            // ファイル存在チェック
-            let merger = MarkdownMerger::new(config);
-            match merger.validate_files().await {
-                Ok(missing_files) => {
-                    if missing_files.is_empty() {
-                        println!("✅ 全てのファイルが存在します");
-                    } else {
-                        println!("⚠️  以下のファイルが見つかりません:");
-                        for file in missing_files {
-                            println!("  - {}", file);
-                        }
-                    }
-                }
-                Err(e) => {
-                    eprintln!("❌ ファイル検証エラー: {}", e);
-                }
+            // 基本情報を表示
+            println!("  バージョン: {}", config.version);
+            println!("  出力モード: {:?}", config.output_mode);
+            println!("  ドキュメントディレクトリ: {}", config.base_docs_dir);
+
+            // 有効なエージェントを表示
+            let enabled = config.enabled_agents();
+            if enabled.is_empty() {
+                println!("  有効なエージェント: なし");
+            } else {
+                println!("  有効なエージェント: {}", enabled.join(", "));
+            }
+
+            // ドキュメントディレクトリの存在確認
+            if Path::new(&config.base_docs_dir).exists() {
+                println!("  ドキュメントディレクトリ: 存在します");
+            } else {
+                println!(
+                    "  ⚠️  ドキュメントディレクトリが存在しません: {}",
+                    config.base_docs_dir
+                );
             }
         }
-        Err(ConfigError::FileNotFound { path }) => {
-            eprintln!("❌ 設定ファイルが見つかりません: {}", path);
-        }
         Err(e) => {
-            eprintln!("❌ 設定ファイルの検証に失敗しました: {}", e);
+            println!("❌ 設定ファイルの検証でエラーが発生しました: {}", e);
+            std::process::exit(1);
         }
     }
 
     Ok(())
 }
 
-/// エージェント一覧コマンドの処理
-async fn handle_list_agents() -> Result<()> {
-    println!("利用可能なエージェント:");
-    println!("  🎯 cursor: Cursor AI Editor用のルールファイル (.cursor/rules/*.mdc)");
-    println!("  🚧 cline: Cline AI Assistant用のコンテキスト (今後実装予定)");
-    println!("  🚧 github: GitHub Copilot用のナレッジ (今後実装予定)");
-    println!("  🚧 claude: Claude Code用のコンテキスト (今後実装予定)");
+/// 設定ファイルを読み込み
+async fn load_config() -> Result<AIContextConfig, ConfigError> {
+    if !Path::new(CONFIG_FILE).exists() {
+        return Err(ConfigError::FileNotFound {
+            path: CONFIG_FILE.to_string(),
+        });
+    }
+
+    ConfigLoader::load(CONFIG_FILE).await
+}
+
+/// ドキュメントディレクトリを作成
+async fn create_docs_directory(config: &AIContextConfig) -> Result<()> {
+    let docs_dir = Path::new(&config.base_docs_dir);
+
+    if docs_dir.exists() {
+        println!(
+            "⚠️  ドキュメントディレクトリは既に存在します: {}",
+            config.base_docs_dir
+        );
+    } else {
+        fs::create_dir_all(docs_dir).await?;
+        println!(
+            "✅ ドキュメントディレクトリを作成しました: {}",
+            config.base_docs_dir
+        );
+
+        // README.mdを作成
+        let readme_content = create_readme_content();
+        let readme_path = docs_dir.join("README.md");
+        fs::write(readme_path, readme_content).await?;
+        println!("📄 {}/README.md", config.base_docs_dir);
+    }
 
     Ok(())
+}
+
+/// README.mdの内容を作成
+fn create_readme_content() -> &'static str {
+    r#"# AI Context Management - ドキュメント
+
+このディレクトリに Markdown ファイルを配置してください。
+
+## 使い方
+
+1. **任意の .md ファイルを作成**
+   - ファイル名は自由に設定できます
+   - サブディレクトリも使用可能です
+
+2. **コンテンツを記述**
+   - プロジェクトのルール
+   - コーディング規約
+   - アーキテクチャ情報
+   - など
+
+3. **ファイルを生成**
+   ```bash
+   aicm generate
+   ```
+
+## ファイル例
+
+```
+docs/
+├── README.md
+├── coding-rules.md
+├── project-info.md
+└── architecture/
+    ├── overview.md
+    └── patterns.md
+```
+
+全ての .md ファイルが自動的に検出され、AI ツール用の設定ファイルに統合されます。
+"#
+}
+
+/// 有効なエージェントのリストを取得
+fn get_enabled_agents(config: &AIContextConfig, filter: Option<String>) -> Vec<String> {
+    let all_enabled = config.enabled_agents();
+
+    match filter {
+        Some(agent_name) => {
+            if all_enabled.contains(&agent_name) {
+                vec![agent_name]
+            } else {
+                println!("❌ エージェント '{}' は有効ではありません", agent_name);
+                println!("💡 有効なエージェント: {}", all_enabled.join(", "));
+                vec![]
+            }
+        }
+        None => all_enabled,
+    }
+}
+
+/// 指定されたエージェントのファイルを生成
+async fn generate_agent_files(
+    config: &AIContextConfig,
+    agent_name: &str,
+) -> Result<Vec<GeneratedFile>> {
+    match agent_name {
+        "cursor" => {
+            let agent = CursorAgent::new(config.clone());
+            agent.generate().await
+        }
+        _ => Err(anyhow::anyhow!("未対応のエージェント: {}", agent_name)),
+    }
+}
+
+/// 生成されたファイルを書き込み
+async fn write_generated_file(file: &GeneratedFile) -> Result<()> {
+    // ディレクトリを作成
+    if let Some(parent) = Path::new(&file.path).parent() {
+        fs::create_dir_all(parent).await?;
+    }
+
+    // ファイルを書き込み
+    fs::write(&file.path, &file.content).await?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_readme_content() {
+        let content = create_readme_content();
+        assert!(content.contains("AI Context Management"));
+        assert!(content.contains("aicm generate"));
+        assert!(content.contains("docs/"));
+    }
+
+    #[test]
+    fn test_get_enabled_agents_with_filter() {
+        let mut config = AIContextConfig::default();
+        config.agents.cursor = true;
+        config.agents.claude = true;
+
+        // フィルターなし
+        let all_agents = get_enabled_agents(&config, None);
+        assert_eq!(all_agents.len(), 2);
+        assert!(all_agents.contains(&"cursor".to_string()));
+        assert!(all_agents.contains(&"claude".to_string()));
+
+        // 有効なエージェントでフィルター
+        let filtered = get_enabled_agents(&config, Some("cursor".to_string()));
+        assert_eq!(filtered, vec!["cursor"]);
+
+        // 無効なエージェントでフィルター
+        let invalid = get_enabled_agents(&config, Some("invalid".to_string()));
+        assert!(invalid.is_empty());
+    }
+
+    #[test]
+    fn test_get_enabled_agents_no_agents() {
+        let config = AIContextConfig::default();
+        let agents = get_enabled_agents(&config, None);
+        assert!(agents.is_empty());
+    }
 }

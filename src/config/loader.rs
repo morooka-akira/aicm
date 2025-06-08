@@ -1,136 +1,75 @@
 /*!
- * AI Context Management Tool - Configuration Loader
- * 
- * このファイルは設定ファイル読み込み機能を提供します。
- * ai-context.yamlファイルの読み込みと検証を行います。
+ * AI Context Management Tool - Configuration Loader (Simplified)
+ *
+ * シンプル化された設定ファイル読み込み機能
  */
 
 use crate::config::error::ConfigError;
-use crate::types::{AIContextConfig, OutputMode, FileMapping};
-use anyhow::Result;
+use crate::types::AIContextConfig;
 use std::path::Path;
 use tokio::fs;
 
-/// 設定ファイルのデフォルト名
-pub const DEFAULT_CONFIG_FILE: &str = "ai-context.yaml";
-
-/// 設定ローダー
+/// 設定ファイルローダー（シンプル版）
 pub struct ConfigLoader;
 
 impl ConfigLoader {
-    /// 設定ファイルを読み込む
-    /// 
-    /// # Arguments
-    /// * `config_path` - 設定ファイルのパス
-    /// 
-    /// # Returns
-    /// 読み込まれた設定
-    pub async fn load<P: AsRef<Path>>(config_path: P) -> Result<AIContextConfig, ConfigError> {
-        let path = config_path.as_ref();
-        
-        // ファイルの存在確認
+    /// 指定されたパスから設定ファイルを読み込み
+    pub async fn load<P: AsRef<Path>>(path: P) -> Result<AIContextConfig, ConfigError> {
+        let path = path.as_ref();
+
         if !path.exists() {
             return Err(ConfigError::FileNotFound {
                 path: path.to_string_lossy().to_string(),
             });
         }
 
-        // ファイル読み込み
-        let content = fs::read_to_string(path).await?;
-        
-        // YAML解析
-        let mut config: AIContextConfig = serde_yaml::from_str(&content)?;
-        
-        // 検証
-        Self::validate_config(&mut config)?;
-        
+        let content = fs::read_to_string(path)
+            .await
+            .map_err(|e| ConfigError::IoError { source: e })?;
+
+        let config: AIContextConfig =
+            serde_yaml::from_str(&content).map_err(|e| ConfigError::YamlError { source: e })?;
+
+        Self::validate_config(&config)?;
         Ok(config)
     }
 
-    /// デフォルト設定ファイルを読み込む
-    pub async fn load_default() -> Result<AIContextConfig, ConfigError> {
-        Self::load(DEFAULT_CONFIG_FILE).await
+    /// デフォルト設定を作成して保存
+    pub async fn create_default<P: AsRef<Path>>(path: P) -> Result<AIContextConfig, ConfigError> {
+        let config = AIContextConfig::default();
+        Self::save(path, &config).await?;
+        Ok(config)
     }
 
-    /// 設定を検証し、必要に応じて補正する
-    fn validate_config(config: &mut AIContextConfig) -> Result<(), ConfigError> {
-        let mut errors = Vec::new();
+    /// 設定ファイルを保存
+    pub async fn save<P: AsRef<Path>>(
+        path: P,
+        config: &AIContextConfig,
+    ) -> Result<(), ConfigError> {
+        let yaml_content =
+            serde_yaml::to_string(config).map_err(|e| ConfigError::YamlError { source: e })?;
 
-        // 必須フィールドの検証
-        if config.version.is_empty() {
-            errors.push("version フィールドが空です".to_string());
-        }
-
-        if config.base_docs_dir.is_empty() {
-            errors.push("base_docs_dir フィールドが空です".to_string());
-        }
-
-        // ファイルマッピングの検証
-        Self::validate_file_mapping(&config.file_mapping, &mut errors);
-
-        // エラーがある場合は失敗
-        if !errors.is_empty() {
-            return Err(ConfigError::ValidationError { errors });
-        }
+        fs::write(path, yaml_content)
+            .await
+            .map_err(|e| ConfigError::IoError { source: e })?;
 
         Ok(())
     }
 
-    /// ファイルマッピング設定を検証
-    fn validate_file_mapping(mapping: &FileMapping, errors: &mut Vec<String>) {
-        // common配列の検証
-        if mapping.common.is_empty() {
-            errors.push("file_mapping.common が空です".to_string());
+    /// 設定の基本的な検証
+    fn validate_config(config: &AIContextConfig) -> Result<(), ConfigError> {
+        if config.version.is_empty() {
+            return Err(ConfigError::ValidationError {
+                message: "バージョンが指定されていません".to_string(),
+            });
         }
 
-        // project_specific配列の検証
-        if mapping.project_specific.is_empty() {
-            errors.push("file_mapping.project_specific が空です".to_string());
+        if config.base_docs_dir.is_empty() {
+            return Err(ConfigError::ValidationError {
+                message: "base_docs_dirが指定されていません".to_string(),
+            });
         }
 
-        // 各ファイルパスの検証
-        for file_path in &mapping.common {
-            if file_path.trim().is_empty() {
-                errors.push("file_mapping.common に空の文字列が含まれています".to_string());
-            }
-        }
-
-        for file_path in &mapping.project_specific {
-            if file_path.trim().is_empty() {
-                errors.push("file_mapping.project_specific に空の文字列が含まれています".to_string());
-            }
-        }
-    }
-
-    /// デフォルト設定を生成
-    pub fn create_default_config() -> AIContextConfig {
-        AIContextConfig {
-            version: "1.0".to_string(),
-            output_mode: OutputMode::Merged,
-            base_docs_dir: "./docs".to_string(),
-            agents: Default::default(),
-            file_mapping: FileMapping {
-                common: vec![
-                    "README.md".to_string(),
-                    "docs/overview.md".to_string(),
-                ],
-                project_specific: vec![
-                    "docs/architecture.md".to_string(),
-                    "docs/api.md".to_string(),
-                ],
-                agent_specific: None,
-            },
-            global_variables: Default::default(),
-        }
-    }
-
-    /// 設定ファイルを生成して保存
-    pub async fn save_config<P: AsRef<Path>>(
-        config: &AIContextConfig,
-        path: P,
-    ) -> Result<(), ConfigError> {
-        let yaml_content = serde_yaml::to_string(config)?;
-        fs::write(path, yaml_content).await?;
         Ok(())
     }
 }
@@ -138,192 +77,163 @@ impl ConfigLoader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
-    use tempfile::{NamedTempFile, tempdir};
+    use crate::types::OutputMode;
+    use tempfile::tempdir;
+    use tokio::fs;
 
     #[tokio::test]
     async fn test_load_valid_config() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("ai-context.yaml");
+
         let valid_yaml = r#"
 version: "1.0"
-output_mode: "merged"
+output_mode: merged
 base_docs_dir: "./docs"
-agents: {}
-file_mapping:
-  common:
-    - "README.md"
-    - "docs/overview.md"
-  project_specific:
-    - "docs/architecture.md"
-global_variables: {}
-        "#;
+agents:
+  cursor: true
+  cline: false
+  github: false
+  claude: false
+"#;
 
-        let mut temp_file = NamedTempFile::new().unwrap();
-        write!(temp_file, "{}", valid_yaml).unwrap();
+        fs::write(&config_path, valid_yaml).await.unwrap();
 
-        let result = ConfigLoader::load(temp_file.path()).await;
-        assert!(result.is_ok());
-
-        let config = result.unwrap();
+        let config = ConfigLoader::load(&config_path).await.unwrap();
         assert_eq!(config.version, "1.0");
+        assert!(matches!(config.output_mode, OutputMode::Merged));
         assert_eq!(config.base_docs_dir, "./docs");
-        assert!(!config.file_mapping.common.is_empty());
+        assert!(config.agents.cursor);
+        assert!(!config.agents.cline);
     }
 
     #[tokio::test]
     async fn test_load_file_not_found() {
-        let result = ConfigLoader::load("non_existent_file.yaml").await;
+        let result = ConfigLoader::load("/nonexistent/path/config.yaml").await;
         assert!(result.is_err());
-        
-        match result.unwrap_err() {
-            ConfigError::FileNotFound { path } => {
-                assert!(path.contains("non_existent_file.yaml"));
-            }
-            _ => panic!("Expected FileNotFound error"),
+
+        if let Err(ConfigError::FileNotFound { path }) = result {
+            assert!(path.contains("nonexistent"));
+        } else {
+            panic!("Expected FileNotFound error");
         }
     }
 
     #[tokio::test]
     async fn test_load_invalid_yaml() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("invalid.yaml");
+
         let invalid_yaml = r#"
 version: "1.0"
-output_mode: invalid_enum_value
-invalid_structure: [
-        "#;
+output_mode: invalid_mode
+base_docs_dir: "./docs"
+agents: not_an_object
+"#;
 
-        let mut temp_file = NamedTempFile::new().unwrap();
-        write!(temp_file, "{}", invalid_yaml).unwrap();
+        fs::write(&config_path, invalid_yaml).await.unwrap();
 
-        let result = ConfigLoader::load(temp_file.path()).await;
+        let result = ConfigLoader::load(&config_path).await;
         assert!(result.is_err());
-        
-        match result.unwrap_err() {
-            ConfigError::YamlParseError { .. } => {
-                // Expected YAML parsing error
-            }
-            _ => panic!("Expected YamlParseError"),
+        assert!(matches!(result.unwrap_err(), ConfigError::YamlError { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_validate_config_missing_version() {
+        let mut config = AIContextConfig::default();
+        config.version = "".to_string();
+
+        let result = ConfigLoader::validate_config(&config);
+        assert!(result.is_err());
+
+        if let Err(ConfigError::ValidationError { message }) = result {
+            assert!(message.contains("バージョンが指定されていません"));
+        } else {
+            panic!("Expected ValidationError");
         }
     }
 
     #[tokio::test]
-    async fn test_validation_missing_version() {
-        let yaml_without_version = r#"
-version: ""
-output_mode: "merged"
-base_docs_dir: "./docs"
-agents: {}
-file_mapping:
-  common:
-    - "README.md"
-  project_specific:
-    - "docs/architecture.md"
-global_variables: {}
-        "#;
+    async fn test_validate_config_missing_base_docs_dir() {
+        let mut config = AIContextConfig::default();
+        config.base_docs_dir = "".to_string();
 
-        let mut temp_file = NamedTempFile::new().unwrap();
-        write!(temp_file, "{}", yaml_without_version).unwrap();
-
-        let result = ConfigLoader::load(temp_file.path()).await;
+        let result = ConfigLoader::validate_config(&config);
         assert!(result.is_err());
-        
-        match result.unwrap_err() {
-            ConfigError::ValidationError { errors } => {
-                assert!(errors.iter().any(|e| e.contains("version")));
-            }
-            _ => panic!("Expected ValidationError"),
+
+        if let Err(ConfigError::ValidationError { message }) = result {
+            assert!(message.contains("base_docs_dirが指定されていません"));
+        } else {
+            panic!("Expected ValidationError");
         }
     }
 
     #[tokio::test]
-    async fn test_validation_empty_file_mapping() {
-        let yaml_empty_mapping = r#"
-version: "1.0"
-output_mode: "merged"
-base_docs_dir: "./docs"
-agents: {}
-file_mapping:
-  common: []
-  project_specific: []
-global_variables: {}
-        "#;
+    async fn test_create_default() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("default.yaml");
 
-        let mut temp_file = NamedTempFile::new().unwrap();
-        write!(temp_file, "{}", yaml_empty_mapping).unwrap();
+        let config = ConfigLoader::create_default(&config_path).await.unwrap();
 
-        let result = ConfigLoader::load(temp_file.path()).await;
-        assert!(result.is_err());
-        
-        match result.unwrap_err() {
-            ConfigError::ValidationError { errors } => {
-                assert!(errors.iter().any(|e| e.contains("common が空です")));
-                assert!(errors.iter().any(|e| e.contains("project_specific が空です")));
-            }
-            _ => panic!("Expected ValidationError"),
-        }
-    }
-
-    #[test]
-    fn test_create_default_config() {
-        let config = ConfigLoader::create_default_config();
-        
+        // デフォルト値を確認
         assert_eq!(config.version, "1.0");
-        assert_eq!(config.base_docs_dir, "./docs");
-        assert!(!config.file_mapping.common.is_empty());
-        assert!(!config.file_mapping.project_specific.is_empty());
         assert!(matches!(config.output_mode, OutputMode::Merged));
+        assert_eq!(config.base_docs_dir, "./docs");
+        assert!(!config.agents.cursor);
+        assert!(!config.agents.cline);
+        assert!(!config.agents.github);
+        assert!(!config.agents.claude);
+
+        // ファイルが実際に作成されたかを確認
+        assert!(config_path.exists());
     }
 
     #[tokio::test]
     async fn test_save_and_load_config() {
         let temp_dir = tempdir().unwrap();
-        let config_path = temp_dir.path().join("test_config.yaml");
-        
-        let original_config = ConfigLoader::create_default_config();
-        
-        // 保存
-        let save_result = ConfigLoader::save_config(&original_config, &config_path).await;
-        assert!(save_result.is_ok());
-        
-        // 読み込み
-        let loaded_config = ConfigLoader::load(&config_path).await;
-        assert!(loaded_config.is_ok());
-        
-        let loaded = loaded_config.unwrap();
-        assert_eq!(loaded.version, original_config.version);
-        assert_eq!(loaded.base_docs_dir, original_config.base_docs_dir);
-    }
+        let config_path = temp_dir.path().join("test.yaml");
 
-    #[test]
-    fn test_validate_file_mapping() {
-        let mut valid_mapping = FileMapping {
-            common: vec!["file1.md".to_string()],
-            project_specific: vec!["file2.md".to_string()],
-            agent_specific: None,
-        };
-        
-        let mut errors = Vec::new();
-        ConfigLoader::validate_file_mapping(&valid_mapping, &mut errors);
-        assert!(errors.is_empty());
-        
-        // 空の文字列を含むマッピング
-        valid_mapping.common.push("".to_string());
-        errors.clear();
-        ConfigLoader::validate_file_mapping(&valid_mapping, &mut errors);
-        assert!(!errors.is_empty());
-        assert!(errors.iter().any(|e| e.contains("空の文字列が含まれています")));
+        let mut original_config = AIContextConfig::default();
+        original_config.agents.cursor = true;
+        original_config.agents.claude = true;
+
+        // 保存
+        ConfigLoader::save(&config_path, &original_config)
+            .await
+            .unwrap();
+
+        // 読み込み
+        let loaded_config = ConfigLoader::load(&config_path).await.unwrap();
+
+        // 内容が一致することを確認
+        assert_eq!(loaded_config.version, original_config.version);
+        assert_eq!(loaded_config.base_docs_dir, original_config.base_docs_dir);
+        assert_eq!(loaded_config.agents.cursor, original_config.agents.cursor);
+        assert_eq!(loaded_config.agents.claude, original_config.agents.claude);
     }
 
     #[tokio::test]
-    async fn test_load_nonexistent_config_file() {
-        // 存在しないファイルの場合のテスト
-        let nonexistent_file = "nonexistent-config.yaml";
-        let result = ConfigLoader::load(nonexistent_file).await;
-        assert!(result.is_err());
-        
-        match result.unwrap_err() {
-            ConfigError::FileNotFound { path } => {
-                assert!(path.contains(nonexistent_file));
-            }
-            _ => panic!("Expected FileNotFound error"),
-        }
+    async fn test_load_config_with_partial_agents() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("partial.yaml");
+
+        let partial_yaml = r#"
+version: "1.0"
+output_mode: split
+base_docs_dir: "./custom-docs"
+agents:
+  cursor: true
+"#;
+
+        fs::write(&config_path, partial_yaml).await.unwrap();
+
+        let config = ConfigLoader::load(&config_path).await.unwrap();
+        assert_eq!(config.version, "1.0");
+        assert!(matches!(config.output_mode, OutputMode::Split));
+        assert_eq!(config.base_docs_dir, "./custom-docs");
+        assert!(config.agents.cursor);
+        assert!(!config.agents.cline); // default false
+        assert!(!config.agents.github); // default false
+        assert!(!config.agents.claude); // default false
     }
 }

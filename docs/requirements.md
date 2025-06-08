@@ -1,12 +1,12 @@
-# Requirements Document - AI Code Agent Context Management Tool (Rust Edition)
+# Requirements Document - AI Code Agent Context Management Tool (Simplified)
 
-## プロジェクト要件定義
+## プロジェクト要件定義（シンプル版）
 
 ### 1. プロジェクト概要
 
 #### 1.1 目的
 
-複数の AI コーディングエージェント用の context ファイルを統一設定から自動生成するコマンドラインツールを開発し、Cargo パッケージとして配布する。
+複数の AI コーディングエージェント用の context ファイルを統一設定から自動生成するシンプルなコマンドラインツールを開発し、Cargo パッケージとして配布する。
 
 #### 1.2 背景
 
@@ -22,6 +22,7 @@
 - 設定変更時の更新作業の自動化
 - チーム全体での設定共有の促進
 - パフォーマンスの向上（Rust による高速化）
+- **シンプル性の重視**: YAGNI（You Aren't Gonna Need It）原則に従った最小限の機能実装
 
 ### 2. 機能要件
 
@@ -40,27 +41,27 @@
 
 - **必須機能**:
 
-  - `docs/` ディレクトリ構造の自動作成
+  - `docs/` ディレクトリの自動作成
   - 設定ファイル `ai-context.yaml` のテンプレート生成
-  - サンプル Markdown ファイルの生成
+  - README.md ファイルの生成
 
-- **ディレクトリ構造**:
+- **シンプルなディレクトリ構造**:
 
 ```
 docs/
-├── common/           # 共通ナレッジ
-│   ├── coding-standards.md
-│   ├── project-overview.md
-│   └── team-conventions.md
-├── agents/           # エージェント固有設定
-│   ├── github.md
-│   ├── cline.md
-│   ├── cursor.md
-│   └── claude.md
-└── ai-context.yaml   # 設定ファイル
+├── README.md         # 使い方説明
+├── overview.md       # プロジェクト概要
+├── rules.md          # コーディングルール
+└── *.md              # 任意のmarkdownファイル
+ai-context.yaml       # 設定ファイル
 ```
 
 ##### 2.2.2 生成機能 (`aicm generate`)
+
+- **自動ファイル検出**:
+
+  - `docs/` ディレクトリ配下の `.md` ファイルを自動検出
+  - サブディレクトリの再帰検索に対応
 
 - **統合モード（デフォルト）**:
 
@@ -69,8 +70,8 @@ docs/
 
 - **分割モード (`output_mode: split`)**:
 
-  - 分割対応エージェント（GitHub Copilot、Cline、Cursor）は複数ファイルで出力
-  - 非対応エージェント（Claude）は統合モードと同じ
+  - ファイルごとに個別の出力ファイルを生成
+  - ファイル名は元のmarkdownファイル名を保持
 
 - **エージェント指定 (`--agent`)**:
   - 特定のエージェントのみファイル生成
@@ -79,76 +80,49 @@ docs/
 ##### 2.2.3 検証機能 (`aicm validate`)
 
 - 設定ファイルの構文チェック
-- 必要な Markdown ファイルの存在確認
-- エージェント固有設定の妥当性検証
-
-##### 2.2.4 エージェント一覧機能 (`aicm list-agents`)
-
-- 利用可能なエージェント一覧表示
-- 各エージェントの実装状況表示
+- ドキュメントディレクトリの存在確認
+- エージェント設定の基本的な妥当性検証
 
 #### 2.3 エージェント固有機能
 
 ##### 2.3.1 Cursor 固有機能 ✅ 実装済み
 
-- **frontmatter 対応**:
+- **シンプルな frontmatter 対応**:
 
-  - `type`: `always` | `auto_attached` | `agent_requested` | `manual`
-  - `description`: ルールの説明
-  - `globs`: 適用対象ファイルパターン
-  - `alwaysApply`: 常に適用するかどうか
+  - `description`: ルールの説明（固定値）
+  - `alwaysApply`: 常に適用（true 固定）
 
 - **分割ファイル生成**:
-  - 設定に基づいて複数の `.mdc` ファイルを生成
-  - 各ファイルに適切な frontmatter を付与
+  - markdownファイルごとに `.mdc` ファイルを生成
+  - 各ファイルに統一された frontmatter を付与
 
-##### 2.3.2 Cline 固有機能 🚧 今後実装
+##### 2.3.2 その他のエージェント 🚧 今後実装
 
-- **数値プレフィックス対応**:
-
-  - ファイル名に数値プレフィックスを付与（例: `01-common.md`）
-  - 読み込み順序の制御
-
-- **分割ファイル生成**:
-  - 設定に基づいて複数の `.md` ファイルを生成
-
-##### 2.3.3 GitHub Copilot 固有機能 🚧 今後実装
-
-- **階層的ファイル配置**:
-
-  - ワークスペース内の任意の場所に `instructions.md` を配置
-  - ディレクトリ階層に応じた適用スコープの制御
-  - より具体的な（深い）指示が優先される階層システム
-
-- **スコープ別設定**:
-  - `workspace`: プロジェクト全体に適用
-  - `source_code`: ソースコードディレクトリに適用
-  - `ui_components`: UI コンポーネントに適用
-
-##### 2.3.4 Claude Code 固有機能 🚧 今後実装
-
-- **言語設定対応**:
-  - 日本語での出力指示の追加
-- **セクション管理**:
-  - 開発コマンド、アーキテクチャ情報等の構造化
+- **Cline**: `.clinerules/*.md` ファイルの生成
+- **GitHub Copilot**: `instructions.md` ファイルの生成
+- **Claude Code**: `CLAUDE.md` ファイルの生成
 
 #### 2.4 設定システム
 
-##### 2.4.1 設定ファイル仕様
+##### 2.4.1 設定ファイル仕様（シンプル版）
 
 - **形式**: YAML
 - **ファイル名**: `ai-context.yaml`
 - **必須項目**:
-  - `version`: 設定ファイルバージョン
+  - `version`: 設定ファイルバージョン（例: "1.0"）
   - `output_mode`: `merged` | `split`
-  - `base_docs_dir`: ベースディレクトリ（デフォルト: `./docs`）
-  - `file_mapping`: ファイルマッピング設定
+  - `base_docs_dir`: ベースディレクトリ（デフォルト: "./docs"）
+  - `agents`: エージェント有効化設定
+    - `cursor`: true/false
+    - `cline`: true/false
+    - `github`: true/false
+    - `claude`: true/false
 
 ##### 2.4.2 型安全性
 
 - Serde による厳密な型チェック
-- コンパイル時の設定検証
-- 実行時エラーの最小化
+- シンプルなデフォルト値設定
+- 基本的なバリデーション
 
 ### 3. 非機能要件
 
