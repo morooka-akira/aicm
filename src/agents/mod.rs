@@ -5,6 +5,8 @@
  */
 
 pub mod base;
+pub mod claude;
 pub mod cursor;
 
+pub use claude::*;
 pub use cursor::*;

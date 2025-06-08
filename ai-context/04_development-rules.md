@@ -36,3 +36,12 @@ cargo test --test integration_test
 - **clippy**: 高品質な Rust コードのためのリンター
 - **型安全性**: Rust の強力な型システムを活用
 - **エラーハンドリング**: anyhow・thiserror による適切なエラー処理
+
+## Lint & Format
+
+- 作業完了時に `cargo fmt` と `cargo clippy` を実行してください。
+
+## 作業記録の作成
+
+- 作業開始時に、`ai-works` ディレクトリに `yyyy-mm-dd-<work name>.md` を作成し、作業内容、要件をまとめてください
+- 指示された場合は、一度作業内容を指示者に確認してもらってから作業を進めてください

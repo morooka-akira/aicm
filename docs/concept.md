@@ -29,12 +29,12 @@
   - [VS Code Copilot Customization](https://code.visualstudio.com/docs/copilot/copilot-customization#_use-instructionsmd-files)
 - **実装状況**: 🚧 Phase 2 で実装予定
 
-### 4. 🚧 Claude Code（今後実装予定）
+### 4. 🎯 Claude Code（実装済み）
 
 - **ファイル**: `CLAUDE.md`
 - **形式**: Markdown
 - **公式ドキュメント**: [Claude Code Memory (CLAUDE.md)](https://docs.anthropic.com/en/docs/claude-code/memory)
-- **実装状況**: 🚧 Phase 2 で実装予定
+- **実装状況**: ✅ 完了（merged モードのみ対応）
 
 ## アーキテクチャ設計原則
 
@@ -266,11 +266,11 @@ aicm generate --dry-run
 5. ✅ Cursor エージェント実装（.cursor/rules/\*.mdc 生成）
 6. ✅ `init`, `generate`, `validate`, `list-agents` コマンド実装
 
-### Phase 2: 他エージェント対応 🚧 **計画中**
+### Phase 2: 他エージェント対応 🚧 **進行中**
 
 1. 🚧 Cline 出力対応（.clinerules/\*.md）
 2. 🚧 GitHub Copilot 出力対応（instructions.md 階層配置）
-3. 🚧 Claude Code 出力対応（CLAUDE.md）
+3. ✅ Claude Code 出力対応（CLAUDE.md）
 
 ### Phase 3: 分割モード対応 📋 **未実装**
 
