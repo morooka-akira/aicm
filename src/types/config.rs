@@ -96,7 +96,38 @@ pub struct CursorAgentConfig {
     /// 出力モード（オプショナル、グローバル設定を上書き）
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
+    /// splitモード時の詳細設定（オプショナル）
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub split_config: Option<CursorSplitConfig>,
 }
+
+/// Cursor splitモード設定
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CursorSplitConfig {
+    /// ルール配列
+    #[serde(default)]
+    pub rules: Vec<CursorSplitRule>,
+}
+
+/// Cursor splitモード時のルール設定
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CursorSplitRule {
+    /// 対象となるMarkdownファイル名パターン
+    pub file_patterns: Vec<String>,
+    /// Always ルール用（alwaysApply: true）
+    #[serde(default, rename = "alwaysApply")]
+    pub always_apply: Option<bool>,
+    /// Auto Attached ルール用（globs設定）
+    #[serde(default)]
+    pub globs: Option<Vec<String>>,
+    /// Agent Requested ルール用（description設定）
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Manual ルール用（manual: true）
+    #[serde(default)]
+    pub manual: Option<bool>,
+}
+
 
 /// Cline エージェント詳細設定
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -334,6 +365,7 @@ mod tests {
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
             output_mode: Some(OutputMode::Split),
+            split_config: None,
         });
         config.agents.cline = ClineConfig::Advanced(ClineAgentConfig {
             enabled: false,
@@ -377,6 +409,7 @@ mod tests {
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
             output_mode: Some(OutputMode::Merged),
+            split_config: None,
         });
 
         // エージェント個別設定がグローバル設定を上書き
@@ -444,6 +477,7 @@ mod tests {
         let cursor_config = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
             output_mode: Some(OutputMode::Split),
+            split_config: None,
         });
 
         let yaml = serde_yaml::to_string(&cursor_config).unwrap();
@@ -451,6 +485,9 @@ mod tests {
 
         assert!(deserialized.is_enabled());
         assert_eq!(deserialized.get_output_mode(), Some(OutputMode::Split));
+        
+        // split_config: null が出力されないことを確認
+        assert!(!yaml.contains("split_config"));
     }
 
     #[test]

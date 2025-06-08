@@ -1,4 +1,4 @@
-# AI Code Agent Context Management Tool 🦀
+# AI Context Management Tool (aicm) 🦀
 
 AI コーディングエージェント用の context ファイルを統一設定から自動生成する Rust 製 CLI ツール
 
@@ -8,10 +8,10 @@ AI コーディングエージェント用の context ファイルを統一設�
 
 ## 🎯 サポート対象ツール
 
-- **🎯 Cursor**: `.cursor/rules/*.mdc` ファイル（YAML frontmatter 付き）
-- **🚧 Cline**: `.clinerules/*.md` ファイル（今後実装予定）
-- **🚧 GitHub Copilot**: `instructions.md` 階層配置（今後実装予定）
-- **🚧 Claude Code**: `CLAUDE.md`（今後実装予定）
+- **✅ Cursor**: `.cursor/rules/*.mdc` ファイル（split_config対応）
+- **✅ Cline**: `.clinerules/*.md` ファイル
+- **✅ GitHub Copilot**: `.github/prompts/*.md` または `.github/copilot-instructions.md`
+- **✅ Claude Code**: `CLAUDE.md`
 
 ## 🚀 インストール
 
@@ -59,38 +59,133 @@ aicm validate
 aicm list-agents
 ```
 
-### 設定ファイル例
+## ⚙️ 設定ファイル仕様
+
+### 基本設定（ai-context.yaml）
 
 ```yaml
 # ai-context.yaml
 version: "1.0"
-output_mode: merged # merged | split
-base_docs_dir: ./docs
+output_mode: split  # merged | split
+base_docs_dir: ./ai-context
 
-# エージェント固有設定
+# エージェント設定
 agents:
-  cursor:
-    split_config:
-      common-rules:
-        type: always
-        description: "共通のコーディングルール"
-        globs: ["**/*.rs", "**/*.ts"]
-      project-rules:
-        type: auto_attached
-        description: "プロジェクト固有のルール"
-
-# ファイルマッピング設定
-file_mapping:
-  common:
-    - "README.md"
-    - "docs/coding-standards.md"
-  project_specific:
-    - "docs/architecture.md"
-    - "docs/api-spec.md"
-  agent_specific:
-    cursor:
-      - "docs/cursor-specific.md"
+  # シンプル設定（有効/無効のみ）
+  cursor: true
+  cline: false
+  github: true
+  claude: true
 ```
+
+### 詳細設定
+
+```yaml
+# ai-context.yaml
+version: "1.0" 
+output_mode: split
+base_docs_dir: ./ai-context
+
+agents:
+  # 詳細設定
+  cursor:
+    enabled: true
+    output_mode: split  # エージェント個別の出力モード
+    split_config:       # Cursor split_config機能
+      rules:
+        - file_patterns: ["*project*", "*overview*"]
+          alwaysApply: true
+        - file_patterns: ["*architecture*", "*design*"]
+          globs: ["**/*.rs", "**/*.ts"]
+        - file_patterns: ["*development*", "*rules*"]
+          description: "開発ルール関連のエージェント要求"
+        - file_patterns: ["*setup*", "*install*"]
+          manual: true
+
+  cline:
+    enabled: true
+    output_mode: merged
+
+  github:
+    enabled: true
+    output_mode: merged
+
+  claude:
+    enabled: true
+    # Claude は常に merged モード
+```
+
+### Cursor split_config詳細
+
+Cursor の split_config 機能では、ファイルパターンに応じて異なるルールタイプを設定できます：
+
+#### ルールタイプ
+
+1. **Always（常時適用）**
+   ```yaml
+   - file_patterns: ["*common*", "*global*"]
+     alwaysApply: true
+   ```
+   生成結果：
+   ```yaml
+   ---
+   alwaysApply: true
+   ---
+   ```
+
+2. **Auto Attached（自動添付）**
+   ```yaml
+   - file_patterns: ["*rust*", "*backend*"]
+     globs: ["**/*.rs", "**/*.toml"]
+   ```
+   生成結果：
+   ```yaml
+   ---
+   description: ''
+   globs: ["**/*.rs", "**/*.toml"]
+   alwaysApply: false
+   ---
+   ```
+
+3. **Agent Requested（エージェント要求）**
+   ```yaml
+   - file_patterns: ["*api*", "*spec*"]
+     description: "API仕様書関連のルール"
+   ```
+   生成結果：
+   ```yaml
+   ---
+   description: API仕様書関連のルール
+   ---
+   ```
+
+4. **Manual（手動参照）**
+   ```yaml
+   - file_patterns: ["*troubleshoot*", "*debug*"]
+     manual: true
+   ```
+   生成結果：
+   ```yaml
+   ---
+   manual: true
+   ---
+   ```
+
+#### ファイルパターン
+
+- `*project*`: "project"を含むファイル名
+- `config*`: "config"で始まるファイル名  
+- `*setup`: "setup"で終わるファイル名
+- `exact.md`: 完全一致
+
+#### 優先順位
+
+複数の設定が同じルールに含まれる場合、以下の優先順位で適用されます：
+1. `manual: true`
+2. `alwaysApply: true`
+3. `globs` 設定
+4. `description` 設定
+5. デフォルト（alwaysApply: true）
 
 ## 🔧 開発環境
 
@@ -141,18 +236,171 @@ aicm/
 │   ├── agents/                 # エージェント実装
 │   │   ├── mod.rs
 │   │   ├── base.rs            # ベースユーティリティ
-│   │   └── cursor.rs          # Cursor実装
+│   │   ├── cursor.rs          # Cursor実装（split_config対応）
+│   │   ├── cline.rs           # Cline実装
+│   │   ├── github.rs          # GitHub Copilot実装
+│   │   └── claude.rs          # Claude Code実装
 │   └── types/                  # 型定義
 │       ├── mod.rs
-│       ├── config.rs          # 設定型
+│       ├── config.rs          # 設定型（CursorSplitConfig含む）
 │       └── agent.rs           # エージェント型
 ├── docs/                      # 設計ドキュメント
 │   ├── concept.md             # 設計概要
-│   ├── design_doc.md          # 技術仕様書（Rust版）
+│   ├── design_doc.md          # 技術仕様書
 │   └── requirements.md        # 要件定義
+├── ai-works/                  # 開発作業記録
 ├── target/                    # ビルド出力
 ├── Cargo.toml                 # プロジェクト設定
-└── Cargo.lock                 # 依存関係ロック
+├── Cargo.lock                 # 依存関係ロック
+└── ai-context.yaml            # 設定ファイル例
+```
+
+## 📤 生成される出力
+
+### Cursor エージェント
+
+**Split モード（split_config なし）**
+```
+.cursor/rules/
+├── 01_project-overview.mdc
+├── 02_architecture.mdc
+├── 03_development-rules.mdc
+└── ...
+```
+
+**Split モード（split_config あり）**
+```
+.cursor/rules/
+├── project-overview.mdc      # alwaysApply: true
+├── architecture.mdc          # globs: ["**/*.rs"], alwaysApply: false
+├── development-rules.mdc     # description: "...", 
+└── setup.mdc                 # manual: true
+```
+
+**Merged モード**
+```
+.cursor/rules/
+└── context.mdc               # 全コンテンツを統合
+```
+
+### その他のエージェント
+
+**Cline**
+```
+.clinerules/
+├── 01-project-overview.md
+├── 02-architecture.md
+└── ...
+```
+
+**GitHub Copilot**
+```
+.github/
+├── prompts/
+│   ├── 01-project-overview.md
+│   └── ...
+└── copilot-instructions.md   # merged モード時
+```
+
+**Claude Code**
+```
+CLAUDE.md                     # 常に merged モード
+```
+
+## 💡 使用例
+
+### 実際の設定例
+
+プロジェクトルートに `ai-context.yaml` を作成：
+
+```yaml
+version: "1.0"
+output_mode: split
+base_docs_dir: ./ai-context
+
+agents:
+  cursor:
+    enabled: true
+    output_mode: split
+    split_config:
+      rules:
+        # プロジェクト概要は常に適用
+        - file_patterns: ["*overview*", "*readme*"]
+          alwaysApply: true
+          
+        # Rustファイル編集時にアーキテクチャ情報を自動添付
+        - file_patterns: ["*architecture*", "*design*"]
+          globs: ["**/*.rs", "**/*.toml"]
+          
+        # API開発時にエージェントが判断して適用
+        - file_patterns: ["*api*", "*endpoint*"]
+          description: "API設計とエンドポイント仕様"
+          
+        # トラブルシューティングは手動参照のみ
+        - file_patterns: ["*troubleshoot*", "*debug*"]
+          manual: true
+
+  cline:
+    enabled: true
+    output_mode: merged
+
+  github:
+    enabled: true
+    output_mode: split
+
+  claude: true  # シンプル設定（デフォルト有効）
+```
+
+### ディレクトリ構造例
+
+```
+your-project/
+├── ai-context/                    # base_docs_dir
+│   ├── 01-project-overview.md
+│   ├── 02-architecture.md
+│   ├── 03-api-design.md
+│   ├── 04-troubleshooting.md
+│   └── 05-coding-standards.md
+├── ai-context.yaml               # 設定ファイル
+├── src/
+│   └── main.rs
+└── Cargo.toml
+```
+
+### 実行例
+
+```bash
+# 設定ファイルを初期化
+aicm init
+
+# 全エージェント向けファイル生成
+aicm generate
+
+# Cursor専用ファイルのみ生成
+aicm generate --agent cursor
+
+# 設定ファイルの妥当性確認
+aicm validate
+```
+
+### 生成結果
+
+```
+your-project/
+├── .cursor/rules/
+│   ├── project-overview.mdc     # alwaysApply: true
+│   ├── architecture.mdc         # globs: ["**/*.rs"]
+│   ├── api-design.mdc          # description: "API設計..."
+│   ├── troubleshooting.mdc     # manual: true
+│   └── coding-standards.mdc    # alwaysApply: true (デフォルト)
+├── .clinerules/
+│   └── context.md              # 全コンテンツ統合
+├── .github/
+│   └── prompts/
+│       ├── 01-project-overview.md
+│       ├── 02-architecture.md
+│       └── ...
+└── CLAUDE.md                   # 全コンテンツ統合
 ```
 
 ## 🧪 テスト

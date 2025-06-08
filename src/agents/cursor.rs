@@ -5,9 +5,8 @@
  */
 
 use crate::core::MarkdownMerger;
-use crate::types::{AIContextConfig, GeneratedFile, OutputMode};
+use crate::types::{AIContextConfig, CursorConfig, GeneratedFile, OutputMode};
 use anyhow::Result;
-use std::collections::HashMap;
 use tokio::fs;
 
 /// Cursorエージェント（シンプル版）
@@ -55,17 +54,57 @@ impl CursorAgent {
         let rules_dir = self.get_rules_dir();
         self.prepare_rules_directory(&rules_dir).await?;
 
-        for (file_name, content) in files {
-            let mdc_content = self.create_mdc_content(&content);
+        // split_config設定の確認
+        let split_config = self.get_split_config();
 
-            // ファイル名から拡張子を除去してmdcファイル名を作成
-            let base_name = file_name.trim_end_matches(".md");
-            let safe_name = base_name.replace(['/', '\\'], "_"); // パス区切り文字をアンダースコアに変換
+        if let Some(config) = split_config {
+            // split_config設定がある場合：ルールベースでファイルを処理
+            let mut processed_files = std::collections::HashSet::new();
 
-            generated_files.push(GeneratedFile::new(
-                format!("{}/{}.mdc", rules_dir, safe_name),
-                mdc_content,
-            ));
+            // 各ルールに対してマッチするファイルを処理
+            for rule in &config.rules {
+                for (file_name, content) in &files {
+                    if self.file_matches_patterns(file_name, &rule.file_patterns) {
+                        let mdc_content = self.create_mdc_content_with_rule(content, rule);
+                        let base_name = file_name.trim_end_matches(".md");
+                        let safe_name = base_name.replace(['/', '\\'], "_");
+
+                        generated_files.push(GeneratedFile::new(
+                            format!("{}/{}.mdc", rules_dir, safe_name),
+                            mdc_content,
+                        ));
+                        processed_files.insert(file_name.clone());
+                    }
+                }
+            }
+
+            // マッチしなかったファイルはデフォルトのalwaysルールで処理
+            for (file_name, content) in &files {
+                if !processed_files.contains(file_name) {
+                    let mdc_content = self.create_mdc_content(content);
+                    let base_name = file_name.trim_end_matches(".md");
+                    let safe_name = base_name.replace(['/', '\\'], "_");
+
+                    generated_files.push(GeneratedFile::new(
+                        format!("{}/{}.mdc", rules_dir, safe_name),
+                        mdc_content,
+                    ));
+                }
+            }
+        } else {
+            // 従来通りの動作：全ファイルを個別に変換（alwaysApply: trueのデフォルト）
+            for (file_name, content) in files {
+                let mdc_content = self.create_mdc_content(&content);
+
+                // ファイル名から拡張子を除去してmdcファイル名を作成
+                let base_name = file_name.trim_end_matches(".md");
+                let safe_name = base_name.replace(['/', '\\'], "_"); // パス区切り文字をアンダースコアに変換
+
+                generated_files.push(GeneratedFile::new(
+                    format!("{}/{}.mdc", rules_dir, safe_name),
+                    mdc_content,
+                ));
+            }
         }
 
         Ok(generated_files)
@@ -100,11 +139,101 @@ impl CursorAgent {
         format!("---\n{}\n---\n\n{}", frontmatter, markdown_content)
     }
 
-    /// YAML frontmatterを作成
+    /// YAML frontmatterを作成（デフォルト: alwaysApply: trueのみ）
     fn create_frontmatter(&self) -> String {
-        let mut frontmatter = HashMap::new();
-        frontmatter.insert("description", "AI Context Management generated rules");
-        frontmatter.insert("alwaysApply", "true");
+        let mut frontmatter = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+        frontmatter["alwaysApply"] = serde_yaml::Value::Bool(true);
+        serde_yaml::to_string(&frontmatter).unwrap_or_default()
+    }
+
+    /// split_config設定を取得
+    fn get_split_config(&self) -> Option<&crate::types::CursorSplitConfig> {
+        match &self.config.agents.cursor {
+            CursorConfig::Advanced(config) => config.split_config.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// ファイル名がパターンにマッチするかチェック
+    fn file_matches_patterns(&self, file_name: &str, patterns: &[String]) -> bool {
+        for pattern in patterns {
+            if self.simple_pattern_match(file_name, pattern) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// 簡単なパターンマッチング（ワイルドカード対応）
+    fn simple_pattern_match(&self, file_name: &str, pattern: &str) -> bool {
+        if pattern.contains('*') {
+            // ワイルドカードを含む場合
+            if pattern.starts_with('*') && pattern.ends_with('*') {
+                // "*rust*" のようなパターン
+                let middle = pattern.trim_start_matches('*').trim_end_matches('*');
+                return file_name.contains(middle);
+            } else if pattern.starts_with('*') {
+                // "*rust" のようなパターン
+                let suffix = pattern.trim_start_matches('*');
+                return file_name.ends_with(suffix);
+            } else if pattern.ends_with('*') {
+                // "rust*" のようなパターン
+                let prefix = pattern.trim_end_matches('*');
+                return file_name.starts_with(prefix);
+            }
+        }
+
+        // 完全一致
+        file_name == pattern
+    }
+
+    /// ルール設定を含むMDC形式のコンテンツを作成
+    fn create_mdc_content_with_rule(
+        &self,
+        markdown_content: &str,
+        rule: &crate::types::CursorSplitRule,
+    ) -> String {
+        let frontmatter = self.create_frontmatter_with_rule(rule);
+        format!("---\n{}\n---\n\n{}", frontmatter, markdown_content)
+    }
+
+    /// ルール設定を含むYAML frontmatterを作成
+    fn create_frontmatter_with_rule(&self, rule: &crate::types::CursorSplitRule) -> String {
+        let mut frontmatter = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+
+        // 優先順位: manual > alwaysApply > globs > description
+        if rule.manual == Some(true) {
+            // Manual: manual: true
+            frontmatter["manual"] = serde_yaml::Value::Bool(true);
+        } else if rule.always_apply == Some(true) {
+            // Always: alwaysApply: true
+            frontmatter["alwaysApply"] = serde_yaml::Value::Bool(true);
+        } else if let Some(globs) = &rule.globs {
+            // Auto Attached: description（空）、globs、alwaysApply: false
+            frontmatter["description"] = serde_yaml::Value::String("".to_string());
+            match globs.len() {
+                1 => {
+                    frontmatter["globs"] = serde_yaml::Value::String(globs[0].clone());
+                }
+                len if len > 1 => {
+                    let globs_values: Vec<serde_yaml::Value> = globs
+                        .iter()
+                        .map(|g| serde_yaml::Value::String(g.clone()))
+                        .collect();
+                    frontmatter["globs"] = serde_yaml::Value::Sequence(globs_values);
+                }
+                _ => {
+                    // 0の場合は何もしない
+                }
+            }
+            frontmatter["alwaysApply"] = serde_yaml::Value::Bool(false);
+        } else if let Some(desc) = &rule.description {
+            // Agent Requested: descriptionのみ
+            frontmatter["description"] = serde_yaml::Value::String(desc.clone());
+        } else {
+            // デフォルト: Always
+            frontmatter["alwaysApply"] = serde_yaml::Value::Bool(true);
+        }
 
         serde_yaml::to_string(&frontmatter).unwrap_or_default()
     }
@@ -136,9 +265,7 @@ mod tests {
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, ".cursor/rules/context.mdc");
         assert!(files[0].content.contains("---"));
-        assert!(files[0]
-            .content
-            .contains("description: AI Context Management generated rules"));
+        assert!(files[0].content.contains("alwaysApply: true"));
     }
 
     #[tokio::test]
@@ -189,9 +316,7 @@ mod tests {
         // 内容をチェック
         for file in &files {
             assert!(file.content.contains("---"));
-            assert!(file
-                .content
-                .contains("description: AI Context Management generated rules"));
+            assert!(file.content.contains("alwaysApply: true"));
 
             if file.path.contains("file1") {
                 assert!(file.content.contains("Content 1"));
@@ -232,7 +357,7 @@ mod tests {
         let mdc_content = agent.create_mdc_content("# Test\nContent here");
 
         assert!(mdc_content.starts_with("---"));
-        assert!(mdc_content.contains("description: AI Context Management generated rules"));
+        assert!(mdc_content.contains("alwaysApply: true"));
         assert!(mdc_content.contains("alwaysApply:"));
         assert!(mdc_content.contains("---\n\n# Test\nContent here"));
     }
@@ -245,7 +370,6 @@ mod tests {
         let frontmatter = agent.create_frontmatter();
 
         // YAML形式であることを確認
-        assert!(frontmatter.contains("description:"));
         assert!(frontmatter.contains("alwaysApply:"));
 
         // パース可能であることを確認
@@ -358,5 +482,292 @@ mod tests {
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
         assert!(paths.contains(&&".cursor/rules/file1.mdc".to_string()));
         assert!(paths.contains(&&".cursor/rules/file2.mdc".to_string()));
+    }
+
+    // === split_config機能のテスト ===
+
+    #[tokio::test]
+    async fn test_split_config_manual_rule() {
+        use crate::types::{CursorAgentConfig, CursorSplitConfig, CursorSplitRule};
+
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // テスト用ファイルを作成
+        fs::write(docs_path.join("manual.md"), "Manual rule content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(CursorSplitConfig {
+                rules: vec![CursorSplitRule {
+                    file_patterns: vec!["*manual*".to_string()],
+                    manual: Some(true),
+                    always_apply: None,
+                    globs: None,
+                    description: None,
+                }],
+            }),
+        });
+
+        let agent = CursorAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        // manual.mdcファイルが生成されることを確認
+        let manual_file = files.iter().find(|f| f.path.contains("manual")).unwrap();
+        assert!(manual_file.content.contains("manual: true"));
+        assert!(!manual_file.content.contains("alwaysApply:"));
+        assert!(!manual_file.content.contains("globs:"));
+        assert!(!manual_file.content.contains("description:"));
+    }
+
+    #[tokio::test]
+    async fn test_split_config_always_rule() {
+        use crate::types::{CursorAgentConfig, CursorSplitConfig, CursorSplitRule};
+
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        fs::write(docs_path.join("always.md"), "Always rule content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(CursorSplitConfig {
+                rules: vec![CursorSplitRule {
+                    file_patterns: vec!["*always*".to_string()],
+                    manual: None,
+                    always_apply: Some(true),
+                    globs: None,
+                    description: None,
+                }],
+            }),
+        });
+
+        let agent = CursorAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        let always_file = files.iter().find(|f| f.path.contains("always")).unwrap();
+        assert!(always_file.content.contains("alwaysApply: true"));
+        assert!(!always_file.content.contains("manual:"));
+        assert!(!always_file.content.contains("globs:"));
+        assert!(!always_file.content.contains("description:"));
+    }
+
+    #[tokio::test]
+    async fn test_split_config_auto_attached_rule() {
+        use crate::types::{CursorAgentConfig, CursorSplitConfig, CursorSplitRule};
+
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        fs::write(docs_path.join("rust.md"), "Rust content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(CursorSplitConfig {
+                rules: vec![CursorSplitRule {
+                    file_patterns: vec!["*rust*".to_string()],
+                    manual: None,
+                    always_apply: None,
+                    globs: Some(vec!["**/*.rs".to_string()]),
+                    description: None,
+                }],
+            }),
+        });
+
+        let agent = CursorAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        let rust_file = files.iter().find(|f| f.path.contains("rust")).unwrap();
+        assert!(rust_file.content.contains("description: ''"));
+        assert!(rust_file.content.contains("globs: '**/*.rs'"));
+        assert!(rust_file.content.contains("alwaysApply: false"));
+        assert!(!rust_file.content.contains("manual:"));
+    }
+
+    #[tokio::test]
+    async fn test_split_config_agent_requested_rule() {
+        use crate::types::{CursorAgentConfig, CursorSplitConfig, CursorSplitRule};
+
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        fs::write(docs_path.join("agent.md"), "Agent requested content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(CursorSplitConfig {
+                rules: vec![CursorSplitRule {
+                    file_patterns: vec!["*agent*".to_string()],
+                    manual: None,
+                    always_apply: None,
+                    globs: None,
+                    description: Some("Agent requested rule".to_string()),
+                }],
+            }),
+        });
+
+        let agent = CursorAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        let agent_file = files.iter().find(|f| f.path.contains("agent")).unwrap();
+        assert!(agent_file
+            .content
+            .contains("description: Agent requested rule"));
+        assert!(!agent_file.content.contains("manual:"));
+        assert!(!agent_file.content.contains("alwaysApply:"));
+        assert!(!agent_file.content.contains("globs:"));
+    }
+
+    #[tokio::test]
+    async fn test_split_config_multiple_globs() {
+        use crate::types::{CursorAgentConfig, CursorSplitConfig, CursorSplitRule};
+
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        fs::write(docs_path.join("multi.md"), "Multi-glob content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(CursorSplitConfig {
+                rules: vec![CursorSplitRule {
+                    file_patterns: vec!["*multi*".to_string()],
+                    manual: None,
+                    always_apply: None,
+                    globs: Some(vec!["**/*.rs".to_string(), "**/*.toml".to_string()]),
+                    description: None,
+                }],
+            }),
+        });
+
+        let agent = CursorAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        let multi_file = files.iter().find(|f| f.path.contains("multi")).unwrap();
+        assert!(multi_file.content.contains("description: ''"));
+        assert!(multi_file.content.contains("globs:"));
+        assert!(multi_file.content.contains("**/*.rs"));
+        assert!(multi_file.content.contains("**/*.toml"));
+        assert!(multi_file.content.contains("alwaysApply: false"));
+    }
+
+    #[tokio::test]
+    async fn test_split_config_unmatched_files_default() {
+        use crate::types::{CursorAgentConfig, CursorSplitConfig, CursorSplitRule};
+
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        fs::write(docs_path.join("matched.md"), "Matched content")
+            .await
+            .unwrap();
+        fs::write(docs_path.join("unmatched.md"), "Unmatched content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(CursorSplitConfig {
+                rules: vec![CursorSplitRule {
+                    file_patterns: vec!["matched.md".to_string()],
+                    manual: Some(true),
+                    always_apply: None,
+                    globs: None,
+                    description: None,
+                }],
+            }),
+        });
+
+        let agent = CursorAgent::new(config);
+        let files = agent.generate().await.unwrap();
+        assert_eq!(files.len(), 2);
+
+        let matched_file = files.iter().find(|f| f.path.contains("matched")).unwrap();
+        assert!(matched_file.content.contains("manual: true"));
+
+        let unmatched_file = files.iter().find(|f| f.path.contains("unmatched")).unwrap();
+        assert!(unmatched_file.content.contains("alwaysApply: true"));
+        assert!(!unmatched_file.content.contains("manual:"));
+    }
+
+    #[tokio::test]
+    async fn test_file_pattern_matching() {
+        let config = create_test_config("./docs", OutputMode::Split);
+        let agent = CursorAgent::new(config);
+
+        // ワイルドカード前後のテスト
+        assert!(agent.simple_pattern_match("architecture.md", "*architecture*"));
+        assert!(agent.simple_pattern_match("rust-guide.md", "*rust*"));
+
+        // ワイルドカード前のみ
+        assert!(agent.simple_pattern_match("test.md", "*test.md"));
+        assert!(!agent.simple_pattern_match("test-file.md", "*test.md"));
+
+        // ワイルドカード後のみ
+        assert!(agent.simple_pattern_match("config.md", "config*"));
+        assert!(!agent.simple_pattern_match("my-config.md", "config*"));
+
+        // 完全一致
+        assert!(agent.simple_pattern_match("exact.md", "exact.md"));
+        assert!(!agent.simple_pattern_match("exact-file.md", "exact.md"));
+    }
+
+    #[tokio::test]
+    async fn test_rule_priority() {
+        use crate::types::{CursorAgentConfig, CursorSplitConfig, CursorSplitRule};
+
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        fs::write(docs_path.join("priority.md"), "Priority test content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(CursorSplitConfig {
+                rules: vec![CursorSplitRule {
+                    file_patterns: vec!["*priority*".to_string()],
+                    manual: Some(true),
+                    always_apply: Some(true),
+                    globs: Some(vec!["**/*.rs".to_string()]),
+                    description: Some("Test description".to_string()),
+                }],
+            }),
+        });
+
+        let agent = CursorAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        // manualが最優先なので、manual: trueのみ含まれるべき
+        let priority_file = files.iter().find(|f| f.path.contains("priority")).unwrap();
+        assert!(priority_file.content.contains("manual: true"));
+        assert!(!priority_file.content.contains("alwaysApply:"));
+        assert!(!priority_file.content.contains("globs:"));
+        assert!(!priority_file.content.contains("description:"));
     }
 }
