@@ -1,14 +1,16 @@
 # 開発環境セットアップ
 
 ## 必要な環境
+
 - Rust 1.70.0 以上
-- Cargo（Rustと一緒にインストール）
+- Cargo（Rust と一緒にインストール）
 
 ## 主要コマンド
+
 ```bash
 # プロジェクトクローン
-git clone https://github.com/morooka-akira/aicm
-cd aicm
+git clone https://github.com/morooka-akira/ai-context-management
+cd ai-context-management
 
 # ビルド
 cargo build

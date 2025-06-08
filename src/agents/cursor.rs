@@ -36,9 +36,9 @@ impl CursorAgent {
         let content = merger.merge_all().await?;
         let mdc_content = self.create_mdc_content(&content);
 
-        // .cursor/rules/ ディレクトリを作成
-        let rules_dir = ".cursor/rules";
-        fs::create_dir_all(rules_dir).await?;
+        // .cursor/rules/ ディレクトリを作成し、既存ファイルを削除
+        let rules_dir = self.get_rules_dir();
+        self.prepare_rules_directory(&rules_dir).await?;
 
         Ok(vec![GeneratedFile::new(
             format!("{}/context.mdc", rules_dir),
@@ -51,9 +51,9 @@ impl CursorAgent {
         let files = merger.get_individual_files().await?;
         let mut generated_files = Vec::new();
 
-        // .cursor/rules/ ディレクトリを作成
-        let rules_dir = ".cursor/rules";
-        fs::create_dir_all(rules_dir).await?;
+        // .cursor/rules/ ディレクトリを作成し、既存ファイルを削除
+        let rules_dir = self.get_rules_dir();
+        self.prepare_rules_directory(&rules_dir).await?;
 
         for (file_name, content) in files {
             let mdc_content = self.create_mdc_content(&content);
@@ -69,6 +69,29 @@ impl CursorAgent {
         }
 
         Ok(generated_files)
+    }
+
+    /// rulesディレクトリのパスを取得
+    fn get_rules_dir(&self) -> String {
+        ".cursor/rules".to_string()
+    }
+
+    /// .cursor/rules/ ディレクトリを準備（既存ファイルを削除）
+    async fn prepare_rules_directory(&self, rules_dir: &str) -> Result<()> {
+        // ディレクトリが存在する場合、中身を削除
+        if fs::metadata(rules_dir).await.is_ok() {
+            let mut entries = fs::read_dir(rules_dir).await?;
+            while let Some(entry) = entries.next_entry().await? {
+                let path = entry.path();
+                if path.is_file() && path.extension().map_or(false, |ext| ext == "mdc") {
+                    fs::remove_file(path).await?;
+                }
+            }
+        }
+
+        // ディレクトリを作成（存在しない場合）
+        fs::create_dir_all(rules_dir).await?;
+        Ok(())
     }
 
     /// MDC形式のコンテンツを作成（YAML frontmatter + Markdown）
@@ -228,5 +251,112 @@ mod tests {
         // パース可能であることを確認
         let parsed: serde_yaml::Value = serde_yaml::from_str(&frontmatter).unwrap();
         assert!(parsed.is_mapping());
+    }
+
+    #[tokio::test]
+    async fn test_prepare_rules_directory_new() {
+        let temp_dir = tempdir().unwrap();
+        let rules_dir = temp_dir.path().join(".cursor/rules");
+        let config = create_test_config("./docs", OutputMode::Merged);
+        let agent = CursorAgent::new(config);
+
+        // ディレクトリが存在しない状態から開始
+        assert!(!rules_dir.exists());
+
+        // prepare_rules_directory を実行
+        agent
+            .prepare_rules_directory(&rules_dir.to_string_lossy())
+            .await
+            .unwrap();
+
+        // ディレクトリが作成されたことを確認
+        assert!(rules_dir.exists());
+        assert!(rules_dir.is_dir());
+    }
+
+    #[tokio::test]
+    async fn test_prepare_rules_directory_removes_existing_mdc_files() {
+        let temp_dir = tempdir().unwrap();
+        let rules_dir = temp_dir.path().join(".cursor/rules");
+        let config = create_test_config("./docs", OutputMode::Merged);
+        let agent = CursorAgent::new(config);
+
+        // ディレクトリを作成
+        fs::create_dir_all(&rules_dir).await.unwrap();
+
+        // 既存のmdcファイルを作成
+        let existing_mdc = rules_dir.join("old_file.mdc");
+        let other_file = rules_dir.join("keep_me.txt");
+        fs::write(&existing_mdc, "old content").await.unwrap();
+        fs::write(&other_file, "keep this").await.unwrap();
+
+        // ファイルが存在することを確認
+        assert!(existing_mdc.exists());
+        assert!(other_file.exists());
+
+        // prepare_rules_directory を実行
+        agent
+            .prepare_rules_directory(&rules_dir.to_string_lossy())
+            .await
+            .unwrap();
+
+        // mdcファイルは削除され、他のファイルは残っていることを確認
+        assert!(!existing_mdc.exists());
+        assert!(other_file.exists());
+    }
+
+    #[tokio::test]
+    async fn test_get_rules_dir() {
+        let config = create_test_config("./docs", OutputMode::Merged);
+        let agent = CursorAgent::new(config);
+
+        let rules_dir = agent.get_rules_dir();
+        assert_eq!(rules_dir, ".cursor/rules");
+    }
+
+    #[tokio::test]
+    async fn test_generate_merged_creates_correct_path() {
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // テスト用ファイルを作成
+        fs::write(docs_path.join("test.md"), "# Test Content")
+            .await
+            .unwrap();
+
+        let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Merged);
+        let agent = CursorAgent::new(config);
+
+        let files = agent.generate().await.unwrap();
+
+        // 正しいパスが生成されることを確認
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, ".cursor/rules/context.mdc");
+        assert!(files[0].content.contains("# Test Content"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_split_creates_correct_paths() {
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // 複数のテスト用ファイルを作成
+        fs::write(docs_path.join("file1.md"), "Content 1")
+            .await
+            .unwrap();
+        fs::write(docs_path.join("file2.md"), "Content 2")
+            .await
+            .unwrap();
+
+        let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        let agent = CursorAgent::new(config);
+
+        let files = agent.generate().await.unwrap();
+
+        // 正しいパスが生成されることを確認
+        assert_eq!(files.len(), 2);
+        let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
+        assert!(paths.contains(&&".cursor/rules/file1.mdc".to_string()));
+        assert!(paths.contains(&&".cursor/rules/file2.mdc".to_string()));
     }
 }
