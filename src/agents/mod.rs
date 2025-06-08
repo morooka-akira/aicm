@@ -6,7 +6,11 @@
 
 pub mod base;
 pub mod claude;
+pub mod cline;
 pub mod cursor;
+pub mod github;
 
 pub use claude::*;
+pub use cline::*;
 pub use cursor::*;
+pub use github::*;
