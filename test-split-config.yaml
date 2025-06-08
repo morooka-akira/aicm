@@ -3,14 +3,17 @@ output_mode: split
 base_docs_dir: ./ai-context
 agents:
   cursor:
+    enabled: true
     output_mode: split
     split_config:
       rules:
         - file_patterns: ["*project*", "*overview*"]
           alwaysApply: true
+          description: "プロジェクト概要ファイル"
+          globs: ["**/*.rs", "**/*.ts"]
         - file_patterns: ["*architecture*"]
+          description: "アーキテクチャドキュメント"
           globs: ["**/*.rs"]
-        - file_patterns: ["*development-rules*"]
-          description: "開発ルール関連のエージェント要求"
-        - file_patterns: ["*setup*", "*development-setup*"]
+        - file_patterns: ["*setup*", "*development*"]
           manual: true
+          description: "開発環境設定"
