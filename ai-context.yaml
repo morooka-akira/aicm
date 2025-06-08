@@ -1,17 +1,31 @@
 version: "1.0"
 output_mode: merged
-base_docs_dir: ./docs
+base_docs_dir: ./ai-context
 agents:
-  cursor: null
+  cursor:
+    split_config:
+      common:
+        type: always
+        description: "共通プロジェクトルール"
+        globs: ["**/*.rs", "**/*.toml"]
+        always_apply: true
+      development:
+        type: auto_attached
+        description: "開発環境設定"
+        globs: ["src/**/*"]
   cline: null
   github: null
   claude: null
 file_mapping:
   common:
-    - README.md
-    - docs/overview.md
+    - common/project-overview.md
+    - common/development-setup.md
+    - common/development-rules.md
+    - common/architecture.md
   project_specific:
-    - docs/architecture.md
-    - docs/api.md
+    - project/tech-stack.md
+    - project/business-rules.md
+    - common/dependencies.md
+    - common/roadmap.md
   agent_specific: null
 global_variables: {}

@@ -1,0 +1,13 @@
+# 依存関係
+
+## 主要なクレート
+- **clap**: CLI構築フレームワーク（derive API使用）
+- **tokio**: 非同期ランタイム
+- **serde + serde_yaml**: 設定ファイル処理
+- **anyhow + thiserror**: エラーハンドリング
+- **async-trait**: 非同期トレイト
+- **path-clean**: パス正規化
+
+## 開発用クレート
+- **tokio-test**: 非同期テスト
+- **tempfile**: テスト用一時ファイル
