@@ -77,7 +77,7 @@ impl ConfigLoader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::OutputMode;
+    use crate::types::{AgentConfigTrait, OutputMode};
     use tempfile::tempdir;
     use tokio::fs;
 
@@ -101,10 +101,10 @@ agents:
 
         let config = ConfigLoader::load(&config_path).await.unwrap();
         assert_eq!(config.version, "1.0");
-        assert!(matches!(config.output_mode, OutputMode::Merged));
+        assert_eq!(config.get_global_output_mode(), OutputMode::Merged);
         assert_eq!(config.base_docs_dir, "./docs");
-        assert!(config.agents.cursor);
-        assert!(!config.agents.cline);
+        assert!(config.agents.cursor.is_enabled());
+        assert!(!config.agents.cline.is_enabled());
     }
 
     #[tokio::test]
@@ -177,12 +177,12 @@ agents: not_an_object
 
         // デフォルト値を確認
         assert_eq!(config.version, "1.0");
-        assert!(matches!(config.output_mode, OutputMode::Merged));
+        assert_eq!(config.get_global_output_mode(), OutputMode::Merged);
         assert_eq!(config.base_docs_dir, "./docs");
-        assert!(!config.agents.cursor);
-        assert!(!config.agents.cline);
-        assert!(!config.agents.github);
-        assert!(!config.agents.claude);
+        assert!(!config.agents.cursor.is_enabled());
+        assert!(!config.agents.cline.is_enabled());
+        assert!(!config.agents.github.is_enabled());
+        assert!(!config.agents.claude.is_enabled());
 
         // ファイルが実際に作成されたかを確認
         assert!(config_path.exists());
@@ -194,8 +194,8 @@ agents: not_an_object
         let config_path = temp_dir.path().join("test.yaml");
 
         let mut original_config = AIContextConfig::default();
-        original_config.agents.cursor = true;
-        original_config.agents.claude = true;
+        original_config.agents.cursor = crate::types::CursorConfig::Simple(true);
+        original_config.agents.claude = crate::types::ClaudeConfig::Simple(true);
 
         // 保存
         ConfigLoader::save(&config_path, &original_config)
@@ -229,11 +229,11 @@ agents:
 
         let config = ConfigLoader::load(&config_path).await.unwrap();
         assert_eq!(config.version, "1.0");
-        assert!(matches!(config.output_mode, OutputMode::Split));
+        assert_eq!(config.get_global_output_mode(), OutputMode::Split);
         assert_eq!(config.base_docs_dir, "./custom-docs");
-        assert!(config.agents.cursor);
-        assert!(!config.agents.cline); // default false
-        assert!(!config.agents.github); // default false
-        assert!(!config.agents.claude); // default false
+        assert!(config.agents.cursor.is_enabled());
+        assert!(!config.agents.cline.is_enabled()); // default false
+        assert!(!config.agents.github.is_enabled()); // default false
+        assert!(!config.agents.claude.is_enabled()); // default false
     }
 }

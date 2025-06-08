@@ -50,7 +50,7 @@ mod tests {
     fn create_test_config(base_dir: &str) -> AIContextConfig {
         AIContextConfig {
             version: "1.0".to_string(),
-            output_mode: OutputMode::Merged, // Claude は merged のみ
+            output_mode: Some(OutputMode::Merged), // Claude は merged のみ
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
@@ -196,7 +196,7 @@ mod tests {
 
         // Split モードで設定しても Claude は merged で動作することを確認
         let mut config = create_test_config(&docs_path.to_string_lossy());
-        config.output_mode = OutputMode::Split;
+        config.output_mode = Some(OutputMode::Split);
 
         let agent = ClaudeAgent::new(config);
         let files = agent.generate().await.unwrap();
