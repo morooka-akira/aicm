@@ -45,6 +45,9 @@ pub struct AgentConfig {
     /// Claude Code エージェント
     #[serde(default)]
     pub claude: ClaudeConfig,
+    /// OpenAI Codex エージェント
+    #[serde(default)]
+    pub codex: CodexConfig,
 }
 
 /// Cursor エージェント設定
@@ -85,6 +88,16 @@ pub enum ClaudeConfig {
     Simple(bool),
     /// 詳細設定
     Advanced(ClaudeAgentConfig),
+}
+
+/// Codex エージェント設定
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum CodexConfig {
+    /// シンプル設定（後方互換性）
+    Simple(bool),
+    /// 詳細設定
+    Advanced(CodexAgentConfig),
 }
 
 /// Cursor エージェント詳細設定
@@ -161,6 +174,17 @@ pub struct ClaudeAgentConfig {
     pub output_mode: Option<OutputMode>,
 }
 
+/// Codex エージェント詳細設定
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CodexAgentConfig {
+    /// エージェント有効/無効（デフォルト：true）
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// 出力モード（オプショナル、Codex は常に merged）
+    #[serde(default)]
+    pub output_mode: Option<OutputMode>,
+}
+
 /// デフォルト値: true
 fn default_true() -> bool {
     true
@@ -186,6 +210,12 @@ impl Default for GitHubConfig {
 }
 
 impl Default for ClaudeConfig {
+    fn default() -> Self {
+        Self::Simple(false)
+    }
+}
+
+impl Default for CodexConfig {
     fn default() -> Self {
         Self::Simple(false)
     }
@@ -218,6 +248,9 @@ impl AIContextConfig {
         if self.agents.claude.is_enabled() {
             agents.push("claude".to_string());
         }
+        if self.agents.codex.is_enabled() {
+            agents.push("codex".to_string());
+        }
         agents
     }
 
@@ -246,6 +279,7 @@ impl AIContextConfig {
                 .get_output_mode()
                 .unwrap_or_else(|| self.get_global_output_mode()),
             "claude" => OutputMode::Merged, // Claude は常に merged
+            "codex" => OutputMode::Merged,  // Codex は常に merged
             _ => self.get_global_output_mode(),
         }
     }
@@ -323,6 +357,22 @@ impl AgentConfigTrait for ClaudeConfig {
     }
 }
 
+impl AgentConfigTrait for CodexConfig {
+    fn is_enabled(&self) -> bool {
+        match self {
+            Self::Simple(enabled) => *enabled,
+            Self::Advanced(config) => config.enabled,
+        }
+    }
+
+    fn get_output_mode(&self) -> Option<OutputMode> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.output_mode.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -338,6 +388,7 @@ mod tests {
         assert!(!config.agents.cline.is_enabled());
         assert!(!config.agents.github.is_enabled());
         assert!(!config.agents.claude.is_enabled());
+        assert!(!config.agents.codex.is_enabled());
     }
 
     #[test]
@@ -351,11 +402,13 @@ mod tests {
         let mut config = AIContextConfig::default();
         config.agents.cursor = CursorConfig::Simple(true);
         config.agents.claude = ClaudeConfig::Simple(true);
+        config.agents.codex = CodexConfig::Simple(true);
 
         let enabled = config.enabled_agents();
-        assert_eq!(enabled.len(), 2);
+        assert_eq!(enabled.len(), 3);
         assert!(enabled.contains(&"cursor".to_string()));
         assert!(enabled.contains(&"claude".to_string()));
+        assert!(enabled.contains(&"codex".to_string()));
     }
 
     #[test]
@@ -436,6 +489,24 @@ mod tests {
         // Claude は常に merged
         assert_eq!(
             config.get_effective_output_mode("claude"),
+            OutputMode::Merged
+        );
+    }
+
+    #[test]
+    fn test_effective_output_mode_codex_always_merged() {
+        let mut config = AIContextConfig {
+            output_mode: Some(OutputMode::Split),
+            ..Default::default()
+        };
+        config.agents.codex = CodexConfig::Advanced(CodexAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split), // 設定されていても無視される
+        });
+
+        // Codex は常に merged
+        assert_eq!(
+            config.get_effective_output_mode("codex"),
             OutputMode::Merged
         );
     }
