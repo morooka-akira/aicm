@@ -11,10 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
-        uses: actions/setup-rust@v1
+        uses: actions-rs/toolchain@v1
         with:
-          rust-version: stable
-          components: clippy,rustfmt
+          toolchain: stable
+          profile: minimal
+          components: rustfmt,clippy
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Run clippy
