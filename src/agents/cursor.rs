@@ -64,6 +64,9 @@ impl CursorAgent {
             // 各ルールに対してマッチするファイルを処理
             for rule in &config.rules {
                 for (file_name, content) in &files {
+                    if processed_files.contains(file_name) {
+                        continue;
+                    }
                     if self.file_matches_patterns(file_name, &rule.file_patterns) {
                         let mdc_content = self.create_mdc_content_with_rule(content, rule);
                         let base_name = file_name.trim_end_matches(".md");
@@ -769,5 +772,46 @@ mod tests {
         assert!(!priority_file.content.contains("alwaysApply:"));
         assert!(!priority_file.content.contains("globs:"));
         assert!(!priority_file.content.contains("description:"));
+    }
+
+    #[tokio::test]
+    async fn test_split_config_no_duplicate_generation() {
+        use crate::types::{CursorAgentConfig, CursorSplitConfig, CursorSplitRule};
+
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        fs::write(docs_path.join("dup.md"), "Duplicate content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(CursorSplitConfig {
+                rules: vec![
+                    CursorSplitRule {
+                        file_patterns: vec!["*dup*".to_string()],
+                        manual: Some(true),
+                        always_apply: None,
+                        globs: None,
+                        description: None,
+                    },
+                    CursorSplitRule {
+                        file_patterns: vec!["dup.md".to_string()],
+                        manual: Some(true),
+                        always_apply: None,
+                        globs: None,
+                        description: None,
+                    },
+                ],
+            }),
+        });
+
+        let agent = CursorAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 1);
     }
 }
