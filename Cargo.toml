@@ -19,7 +19,7 @@ serde_yaml = "0.9"
 
 # Error handling
 anyhow = "1.0"
-thiserror = "1.0"
+thiserror = "2.0"
 
 # File system operations
 tokio = { version = "1.0", features = ["full"] }
