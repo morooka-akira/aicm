@@ -83,6 +83,8 @@ pub struct AgentConfigs {
     pub github: Option<GitHubConfig>,
     #[serde(default)]
     pub claude: Option<ClaudeConfig>,
+    #[serde(default)]
+    pub codex: Option<CodexConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -503,7 +505,7 @@ async fn handle_generate(config_path: &str, target_agent: Option<&str>) -> Resul
         }
         Some(agent) => {
             eprintln!("❌ 未対応のエージェント: {}", agent);
-            eprintln!("サポートされているエージェント: cursor");
+            eprintln!("サポートされているエージェント: cursor, cline, github, claude, codex");
             return Ok(());
         }
     }

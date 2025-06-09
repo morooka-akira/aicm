@@ -10,7 +10,7 @@
 
 ### 目的
 
-- GitHub Copilot、Cline、Cursor、Claude Code 用の context ファイルを一元管理
+- GitHub Copilot、Cline、Cursor、Claude Code、OpenAI Codex 用の context ファイルを一元管理
 - 一つの設定ファイルから各ツール固有のファイル形式を自動生成
 - 開発チーム間での AI ツール設定の一貫性を保つ
 - Rust による高速・安全な実装
@@ -21,5 +21,6 @@
 2. **✅ Cline**: `.clinerules/*.md` ファイル（実装済み）
 3. **✅ GitHub Copilot**: `.github/prompts/*.md` または `.github/copilot-instructions.md`（実装済み）
 4. **✅ Claude Code**: `CLAUDE.md`（実装済み）
+5. **✅ OpenAI Codex**: `AGENTS.md`（実装済み）
 
 詳細な設計概要は `docs/concept.md` を参照してください。

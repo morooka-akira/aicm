@@ -14,3 +14,4 @@
 - [GitHub Copilot Custom Instructions](https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot)
 - [VS Code Copilot Customization](https://code.visualstudio.com/docs/copilot/copilot-customization#_use-instructionsmd-files)
 - [Cursor Rules](https://docs.cursor.com/context/rules)
+- [OpenAI Codex](https://openai.com/ja-JP/index/introducing-codex/)
