@@ -258,4 +258,32 @@ mod tests {
         assert!(content.contains("# Test"));
         assert!(content.contains("Content here"));
     }
+
+    #[tokio::test]
+    async fn test_cleanup_split_files_removes_only_instructions() {
+        let temp_dir = tempdir().unwrap();
+        let gh_dir = temp_dir.path().join(".github").join("instructions");
+        fs::create_dir_all(&gh_dir).await.unwrap();
+
+        // Create files to be cleaned up
+        fs::write(gh_dir.join("a.instructions.md"), "delete").await.unwrap();
+        fs::write(gh_dir.join("b.instructions.md"), "delete").await.unwrap();
+        // Files that should remain
+        fs::write(gh_dir.join("keep.txt"), "keep").await.unwrap();
+        fs::write(gh_dir.join("keep.instructions.txt"), "keep").await.unwrap();
+
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&temp_dir).unwrap();
+
+        let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Split);
+        let agent = GitHubAgent::new(config);
+        agent.cleanup_split_files().await.unwrap();
+
+        std::env::set_current_dir(&original_dir).unwrap();
+
+        assert!(!gh_dir.join("a.instructions.md").exists());
+        assert!(!gh_dir.join("b.instructions.md").exists());
+        assert!(gh_dir.join("keep.txt").exists());
+        assert!(gh_dir.join("keep.instructions.txt").exists());
+    }
 }
