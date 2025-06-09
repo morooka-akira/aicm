@@ -256,7 +256,7 @@ mod tests {
     #[tokio::test]
     async fn test_generate_merged_empty() {
         let temp_dir = tempdir().unwrap();
-        let prev_dir = std::env::current_dir().unwrap();
+        let _prev_dir = std::env::current_dir().unwrap();
 
         // テスト用一時ディレクトリに移動
         std::env::set_current_dir(&temp_dir).unwrap();
@@ -269,7 +269,7 @@ mod tests {
         assert_eq!(files[0].path, ".github/copilot-instructions.md");
 
         // 元のディレクトリに戻る
-        let _ = std::env::set_current_dir(prev_dir);
+        let _ = std::env::set_current_dir(_prev_dir);
     }
 
     #[tokio::test]
@@ -282,7 +282,7 @@ mod tests {
             .await
             .unwrap();
 
-        let prev_dir = std::env::current_dir().unwrap();
+        let _prev_dir = std::env::current_dir().unwrap();
 
         // テスト用一時ディレクトリに移動
         std::env::set_current_dir(&temp_dir).unwrap();
@@ -301,13 +301,13 @@ mod tests {
         assert!(files[0].content.contains("This is a test."));
 
         // 元のディレクトリに戻る
-        let _ = std::env::set_current_dir(prev_dir);
+        let _ = std::env::set_current_dir(_prev_dir);
     }
 
     #[tokio::test]
     async fn test_generate_split_multiple_files() {
         let temp_dir = tempdir().unwrap();
-        let prev_dir = std::env::current_dir().unwrap();
+        let _prev_dir = std::env::current_dir().unwrap();
 
         // テスト用一時ディレクトリに移動
         std::env::set_current_dir(&temp_dir).unwrap();
@@ -343,7 +343,7 @@ mod tests {
         }
 
         // 元のディレクトリに戻る
-        let _ = std::env::set_current_dir(prev_dir);
+        let _ = std::env::set_current_dir(_prev_dir);
     }
 
     #[tokio::test]
@@ -390,7 +390,7 @@ mod tests {
             .await
             .unwrap();
 
-        let prev_dir = std::env::current_dir().unwrap();
+        let _prev_dir = std::env::current_dir().unwrap();
 
         // テスト用一時ディレクトリに移動
         std::env::set_current_dir(&temp_dir).unwrap();
@@ -411,14 +411,14 @@ mod tests {
         assert!(content.contains("Content here"));
 
         // 元のディレクトリに戻る
-        let _ = std::env::set_current_dir(prev_dir);
+        let _ = std::env::set_current_dir(_prev_dir);
     }
 
     #[tokio::test]
     async fn test_cleanup_split_files_ignores_file_path() {
         // .github/instructions がファイルの場合でもエラーなく終了すること
         let temp_dir = tempdir().unwrap();
-        let prev_dir = std::env::current_dir().unwrap();
+        let _prev_dir = std::env::current_dir().unwrap();
 
         // テスト用一時ディレクトリに移動
         std::env::set_current_dir(&temp_dir).unwrap();
@@ -443,13 +443,13 @@ mod tests {
         // 後片付けは一時ディレクトリなので不要
 
         // 元のディレクトリに戻る
-        let _ = std::env::set_current_dir(prev_dir);
+        let _ = std::env::set_current_dir(_prev_dir);
     }
 
     #[tokio::test]
     async fn test_generate_split_with_apply_to() {
         let temp_dir = tempdir().unwrap();
-        let prev_dir = std::env::current_dir().unwrap();
+        let _prev_dir = std::env::current_dir().unwrap();
 
         // テスト用一時ディレクトリに移動
         std::env::set_current_dir(&temp_dir).unwrap();
