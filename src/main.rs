@@ -6,6 +6,7 @@
 
 use aicm::agents::claude::ClaudeAgent;
 use aicm::agents::cline::ClineAgent;
+use aicm::agents::codex::CodexAgent;
 use aicm::agents::cursor::CursorAgent;
 use aicm::agents::github::GitHubAgent;
 use aicm::config::{error::ConfigError, loader::ConfigLoader};
@@ -259,6 +260,10 @@ async fn generate_agent_files(
         }
         "cline" => {
             let agent = ClineAgent::new(config.clone());
+            agent.generate().await
+        }
+        "codex" => {
+            let agent = CodexAgent::new(config.clone());
             agent.generate().await
         }
         _ => Err(anyhow::anyhow!("未対応のエージェント: {}", agent_name)),
