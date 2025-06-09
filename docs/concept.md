@@ -50,6 +50,12 @@ AI Context Management Tool (AICM) は、複数の AI コーディングエージ
 - **形式**: 純粋な Markdown
 - **モード**: merged のみ（Claude の仕様）
 
+### 🚧 OpenAI Codex
+
+- **出力先**: `AGENTS.md`
+- **形式**: 純粋な Markdown
+- **モード**: merged のみ（Codex の仕様）
+
 ## 設定ファイル形式
 
 ### 基本構造
@@ -66,6 +72,7 @@ agents:
   github:
     output_mode: split # enabled のデフォルトは true
   claude: false # 無効化
+  codex: true # OpenAI Codex エージェント
 ```
 
 ### 設定の優先順位
@@ -87,6 +94,7 @@ agents:
   cline: false
   github: true
   claude: false
+  codex: false
 ```
 
 ## 出力モード
@@ -156,6 +164,7 @@ agents:
   github:
     enabled: true # グローバル設定（split）を使用
   claude: false # 無効
+  codex: false # 無効
 ```
 
 #### 例 2: 全て個別設定
@@ -172,6 +181,8 @@ agents:
   github:
     output_mode: split
   claude: false
+  codex:
+    output_mode: merged
 ```
 
 ## 拡張性

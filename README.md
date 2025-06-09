@@ -4,7 +4,7 @@ AI コーディングエージェント用の context ファイルを統一設�
 
 ## ✨ 概要
 
-複数の AI ツール（GitHub Copilot、Cline、Cursor、Claude Code）用の context ファイルを一元管理し、統一設定から各ツール固有のファイル形式を自動生成します。
+複数の AI ツール（GitHub Copilot、Cline、Cursor、Claude Code、OpenAI Codex）用の context ファイルを一元管理し、統一設定から各ツール固有のファイル形式を自動生成します。
 
 ## 🎯 サポート対象ツール
 
@@ -12,6 +12,7 @@ AI コーディングエージェント用の context ファイルを統一設�
 - **✅ Cline**: `.clinerules/*.md` ファイル
 - **✅ GitHub Copilot**: `.github/prompts/*.md` または `.github/copilot-instructions.md`
 - **✅ Claude Code**: `CLAUDE.md`
+- **✅ OpenAI Codex**: `AGENTS.md`
 
 ## 🚀 インストール
 
@@ -74,6 +75,7 @@ agents:
   cline: false
   github: true
   claude: true
+  codex: false
 ```
 
 ### 詳細設定
@@ -111,6 +113,10 @@ agents:
   claude:
     enabled: true
     # Claude は常に merged モード
+
+  codex:
+    enabled: false
+    # Codex は常に merged モード
 ```
 
 ### Cursor split_config詳細
@@ -237,7 +243,8 @@ aicm/
 │   │   ├── cursor.rs          # Cursor実装（split_config対応）
 │   │   ├── cline.rs           # Cline実装
 │   │   ├── github.rs          # GitHub Copilot実装
-│   │   └── claude.rs          # Claude Code実装
+│   │   ├── claude.rs          # Claude Code実装
+│   │   └── codex.rs           # OpenAI Codex実装
 │   └── types/                  # 型定義
 │       ├── mod.rs
 │       ├── config.rs          # 設定型（CursorSplitConfig含む）
@@ -305,6 +312,11 @@ aicm/
 CLAUDE.md                     # 常に merged モード
 ```
 
+**OpenAI Codex**
+```
+AGENTS.md                     # 常に merged モード
+```
+
 ## 💡 使用例
 
 ### 実際の設定例
@@ -347,6 +359,8 @@ agents:
     output_mode: split
 
   claude: true  # シンプル設定（デフォルト有効）
+  
+  codex: false  # シンプル設定（デフォルト無効）
 ```
 
 ### ディレクトリ構造例
@@ -398,7 +412,8 @@ your-project/
 │       ├── 01-project-overview.md
 │       ├── 02-architecture.md
 │       └── ...
-└── CLAUDE.md                   # 全コンテンツ統合
+├── CLAUDE.md                   # Claude用（全コンテンツ統合）
+└── AGENTS.md                   # Codex用（全コンテンツ統合）
 ```
 
 ## 🧪 テスト
