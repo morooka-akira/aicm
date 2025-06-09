@@ -10,7 +10,7 @@
  */
 
 use crate::core::MarkdownMerger;
-use crate::types::{AIContextConfig, GeneratedFile, OutputMode};
+use crate::types::{AIContextConfig, GeneratedFile, GitHubSplitRule, OutputMode};
 use anyhow::Result;
 use tokio::fs;
 
@@ -68,6 +68,16 @@ impl GitHubAgent {
         // 既存の .instructions.md ファイルを削除
         self.cleanup_split_files().await?;
 
+        // split_config が設定されている場合は、そのルールに従って生成
+        if let Some(github_config) = &self.config.agents.github.get_advanced_config() {
+            if let Some(split_config) = &github_config.split_config {
+                return self
+                    .generate_split_with_config(&files, &split_config.rules)
+                    .await;
+            }
+        }
+
+        // split_config が設定されていない場合は、従来通りの生成
         for (file_name, content) in files {
             let instructions_content = self.create_instructions_content(&content);
 
@@ -84,9 +94,105 @@ impl GitHubAgent {
         Ok(generated_files)
     }
 
+    /// split_config のルールに従ってファイルを生成
+    async fn generate_split_with_config(
+        &self,
+        files: &[(String, String)],
+        rules: &[GitHubSplitRule],
+    ) -> Result<Vec<GeneratedFile>> {
+        let mut generated_files = Vec::new();
+
+        for rule in rules {
+            // ルールにマッチするファイルを収集
+            let matching_files: Vec<_> = files
+                .iter()
+                .filter(|(file_name, _)| {
+                    rule.file_patterns
+                        .iter()
+                        .any(|pattern| self.file_matches_pattern(file_name, pattern))
+                })
+                .collect();
+
+            if matching_files.is_empty() {
+                continue;
+            }
+
+            // マッチしたファイルのコンテンツを結合
+            let combined_content = matching_files
+                .iter()
+                .map(|(file_name, content)| format!("# {}\n\n{}", file_name, content))
+                .collect::<Vec<_>>()
+                .join("\n\n");
+
+            // applyTo フロントマターを追加
+            let instructions_content =
+                self.create_instructions_content_with_apply_to(&combined_content, &rule.apply_to);
+
+            // ルールに基づいたファイル名を生成
+            let rule_name = self.generate_rule_filename(&rule.file_patterns);
+            let safe_name = rule_name.replace(['/', '\\'], "_");
+
+            generated_files.push(GeneratedFile::new(
+                format!(".github/instructions/{}.instructions.md", safe_name),
+                instructions_content,
+            ));
+        }
+
+        Ok(generated_files)
+    }
+
+    /// ファイル名がパターンにマッチするかチェック
+    fn file_matches_pattern(&self, file_name: &str, pattern: &str) -> bool {
+        // シンプルなワイルドカードマッチング
+        if pattern.contains('*') {
+            // "*pattern*" のようなパターンの場合
+            if pattern.starts_with('*') && pattern.ends_with('*') {
+                let middle = &pattern[1..pattern.len() - 1];
+                return file_name.contains(middle);
+            }
+            // "*pattern" のようなパターンの場合
+            if let Some(suffix) = pattern.strip_prefix('*') {
+                return file_name.ends_with(suffix);
+            }
+            // "pattern*" のようなパターンの場合
+            if let Some(prefix) = pattern.strip_suffix('*') {
+                return file_name.starts_with(prefix);
+            }
+        }
+
+        // 完全一致またはサブストリング一致
+        file_name.contains(pattern)
+    }
+
+    /// ルールのファイルパターンからファイル名を生成
+    fn generate_rule_filename(&self, file_patterns: &[String]) -> String {
+        file_patterns
+            .first()
+            .unwrap_or(&"default".to_string())
+            .trim_start_matches('*')
+            .trim_end_matches('*')
+            .trim_matches(['_', '-'])
+            .to_lowercase()
+    }
+
     /// GitHub Copilot用のコンテンツを作成（純粋なMarkdown、フロントマターなし）
     fn create_instructions_content(&self, content: &str) -> String {
         content.to_string()
+    }
+
+    /// applyTo フロントマターを含むGitHub Copilot用のコンテンツを作成
+    fn create_instructions_content_with_apply_to(
+        &self,
+        content: &str,
+        apply_to: &Option<Vec<String>>,
+    ) -> String {
+        match apply_to {
+            Some(patterns) if !patterns.is_empty() => {
+                let apply_to_value = patterns.join(",");
+                format!("---\napplyTo: \"{}\"\n---\n\n{}", apply_to_value, content)
+            }
+            _ => content.to_string(),
+        }
     }
 
     /// 分割モード用ファイル（.github/instructions/*.instructions.md）を削除
@@ -150,12 +256,20 @@ mod tests {
     #[tokio::test]
     async fn test_generate_merged_empty() {
         let temp_dir = tempdir().unwrap();
+        let prev_dir = std::env::current_dir().unwrap();
+
+        // テスト用一時ディレクトリに移動
+        std::env::set_current_dir(&temp_dir).unwrap();
+
         let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Merged);
         let agent = GitHubAgent::new(config);
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, ".github/copilot-instructions.md");
+
+        // 元のディレクトリに戻る
+        let _ = std::env::set_current_dir(prev_dir);
     }
 
     #[tokio::test]
@@ -167,6 +281,11 @@ mod tests {
         fs::write(docs_path.join("test.md"), "# Test Content\nThis is a test.")
             .await
             .unwrap();
+
+        let prev_dir = std::env::current_dir().unwrap();
+
+        // テスト用一時ディレクトリに移動
+        std::env::set_current_dir(&temp_dir).unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Merged);
         let agent = GitHubAgent::new(config);
@@ -180,11 +299,19 @@ mod tests {
         // 元のコンテンツが含まれることを確認
         assert!(files[0].content.contains("# Test Content"));
         assert!(files[0].content.contains("This is a test."));
+
+        // 元のディレクトリに戻る
+        let _ = std::env::set_current_dir(prev_dir);
     }
 
     #[tokio::test]
     async fn test_generate_split_multiple_files() {
         let temp_dir = tempdir().unwrap();
+        let prev_dir = std::env::current_dir().unwrap();
+
+        // テスト用一時ディレクトリに移動
+        std::env::set_current_dir(&temp_dir).unwrap();
+
         let docs_path = temp_dir.path();
 
         // 複数のテスト用ファイルを作成
@@ -214,11 +341,19 @@ mod tests {
                 assert!(file.content.contains("Content 2"));
             }
         }
+
+        // 元のディレクトリに戻る
+        let _ = std::env::set_current_dir(prev_dir);
     }
 
     #[tokio::test]
     async fn test_generate_split_with_subdirectory() {
         let temp_dir = tempdir().unwrap();
+        let prev_dir = std::env::current_dir().unwrap();
+
+        // テスト用一時ディレクトリに移動
+        std::env::set_current_dir(&temp_dir).unwrap();
+
         let docs_path = temp_dir.path();
 
         // サブディレクトリを作成
@@ -240,6 +375,9 @@ mod tests {
             ".github/instructions/subdir_nested.instructions.md"
         );
         assert!(files[0].content.contains("Nested content"));
+
+        // 元のディレクトリに戻る
+        let _ = std::env::set_current_dir(prev_dir);
     }
 
     #[tokio::test]
@@ -251,6 +389,11 @@ mod tests {
         fs::write(docs_path.join("test.md"), "# Test\nContent here")
             .await
             .unwrap();
+
+        let prev_dir = std::env::current_dir().unwrap();
+
+        // テスト用一時ディレクトリに移動
+        std::env::set_current_dir(&temp_dir).unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Merged);
         let agent = GitHubAgent::new(config);
@@ -266,12 +409,19 @@ mod tests {
         // 内容は含まれていることを確認
         assert!(content.contains("# Test"));
         assert!(content.contains("Content here"));
+
+        // 元のディレクトリに戻る
+        let _ = std::env::set_current_dir(prev_dir);
     }
 
     #[tokio::test]
     async fn test_cleanup_split_files_ignores_file_path() {
         // .github/instructions がファイルの場合でもエラーなく終了すること
         let temp_dir = tempdir().unwrap();
+        let prev_dir = std::env::current_dir().unwrap();
+
+        // テスト用一時ディレクトリに移動
+        std::env::set_current_dir(&temp_dir).unwrap();
 
         // setup: instructions をファイルとして作成
         fs::create_dir_all(".github").await.unwrap();
@@ -290,7 +440,124 @@ mod tests {
         let metadata = fs::metadata(".github/instructions").await.unwrap();
         assert!(metadata.is_file());
 
-        // 後片付け
-        fs::remove_file(".github/instructions").await.unwrap();
+        // 後片付けは一時ディレクトリなので不要
+
+        // 元のディレクトリに戻る
+        let _ = std::env::set_current_dir(prev_dir);
+    }
+
+    #[tokio::test]
+    async fn test_generate_split_with_apply_to() {
+        let temp_dir = tempdir().unwrap();
+        let prev_dir = std::env::current_dir().unwrap();
+
+        // テスト用一時ディレクトリに移動
+        std::env::set_current_dir(&temp_dir).unwrap();
+
+        let docs_path = temp_dir.path();
+
+        // テスト用ファイルを作成
+        fs::write(
+            docs_path.join("architecture.md"),
+            "# Architecture\nSystem design",
+        )
+        .await
+        .unwrap();
+        fs::write(docs_path.join("frontend.md"), "# Frontend\nUI components")
+            .await
+            .unwrap();
+
+        // split_config 付きの設定を作成
+        use crate::types::{GitHubAgentConfig, GitHubConfig, GitHubSplitConfig};
+        let github_config = GitHubConfig::Advanced(GitHubAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(GitHubSplitConfig {
+                rules: vec![
+                    GitHubSplitRule {
+                        file_patterns: vec!["*architecture*".to_string()],
+                        apply_to: Some(vec!["**/*.rs".to_string(), "**/*.toml".to_string()]),
+                    },
+                    GitHubSplitRule {
+                        file_patterns: vec!["*frontend*".to_string()],
+                        apply_to: Some(vec!["**/*.ts".to_string(), "**/*.tsx".to_string()]),
+                    },
+                ],
+            }),
+        });
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.github = github_config;
+
+        let agent = GitHubAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 2);
+
+        // アーキテクチャファイルをチェック
+        let arch_file = files
+            .iter()
+            .find(|f| f.path.contains("architecture"))
+            .unwrap();
+        assert!(arch_file.content.contains("---"));
+        assert!(arch_file.content.contains("applyTo: \"**/*.rs,**/*.toml\""));
+        assert!(arch_file.content.contains("# Architecture"));
+
+        // フロントエンドファイルをチェック
+        let frontend_file = files.iter().find(|f| f.path.contains("frontend")).unwrap();
+        assert!(frontend_file.content.contains("---"));
+        assert!(frontend_file
+            .content
+            .contains("applyTo: \"**/*.ts,**/*.tsx\""));
+        assert!(frontend_file.content.contains("# Frontend"));
+    }
+
+    #[tokio::test]
+    async fn test_file_matches_pattern() {
+        let temp_dir = tempdir().unwrap();
+        let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Split);
+        let agent = GitHubAgent::new(config);
+
+        // "*pattern*" のテスト
+        assert!(agent.file_matches_pattern("test-architecture-doc.md", "*architecture*"));
+        assert!(!agent.file_matches_pattern("frontend.md", "*architecture*"));
+
+        // "*pattern" のテスト
+        assert!(agent.file_matches_pattern("setup.md", "*setup.md"));
+        assert!(!agent.file_matches_pattern("setup-guide.md", "*setup.md"));
+
+        // "pattern*" のテスト
+        assert!(agent.file_matches_pattern("frontend-components.md", "frontend*"));
+        assert!(!agent.file_matches_pattern("my-frontend.md", "frontend*"));
+
+        // 完全一致のテスト
+        assert!(agent.file_matches_pattern("readme.md", "readme"));
+        assert!(agent.file_matches_pattern("my-readme-file.md", "readme"));
+    }
+
+    #[tokio::test]
+    async fn test_create_instructions_content_with_apply_to() {
+        let temp_dir = tempdir().unwrap();
+        let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Split);
+        let agent = GitHubAgent::new(config);
+
+        // applyTo が設定されている場合
+        let content_with_apply_to = agent.create_instructions_content_with_apply_to(
+            "Test content",
+            &Some(vec!["**/*.ts".to_string(), "**/*.tsx".to_string()]),
+        );
+        assert!(content_with_apply_to.starts_with("---"));
+        assert!(content_with_apply_to.contains("applyTo: \"**/*.ts,**/*.tsx\""));
+        assert!(content_with_apply_to.contains("Test content"));
+
+        // applyTo が設定されていない場合
+        let content_without_apply_to =
+            agent.create_instructions_content_with_apply_to("Test content", &None);
+        assert_eq!(content_without_apply_to, "Test content");
+
+        // applyTo が空配列の場合
+        let content_empty_apply_to =
+            agent.create_instructions_content_with_apply_to("Test content", &Some(vec![]));
+        assert_eq!(content_empty_apply_to, "Test content");
     }
 }

@@ -122,6 +122,14 @@ pub struct CursorSplitConfig {
     pub rules: Vec<CursorSplitRule>,
 }
 
+/// GitHub splitモード設定
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GitHubSplitConfig {
+    /// ルール配列
+    #[serde(default)]
+    pub rules: Vec<GitHubSplitRule>,
+}
+
 /// Cursor splitモード時のルール設定
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CursorSplitRule {
@@ -139,6 +147,16 @@ pub struct CursorSplitRule {
     /// Manual ルール用（manual: true）
     #[serde(default)]
     pub manual: Option<bool>,
+}
+
+/// GitHub splitモード時のルール設定
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GitHubSplitRule {
+    /// 対象となるMarkdownファイル名パターン
+    pub file_patterns: Vec<String>,
+    /// applyTo オプション用のファイルパターン（globパターン）
+    #[serde(default)]
+    pub apply_to: Option<Vec<String>>,
 }
 
 /// Cline エージェント詳細設定
@@ -161,6 +179,9 @@ pub struct GitHubAgentConfig {
     /// 出力モード（オプショナル、グローバル設定を上書き）
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
+    /// splitモード時の詳細設定（オプショナル）
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub split_config: Option<GitHubSplitConfig>,
 }
 
 /// Claude エージェント詳細設定
@@ -337,6 +358,16 @@ impl AgentConfigTrait for GitHubConfig {
         match self {
             Self::Simple(_) => None,
             Self::Advanced(config) => config.output_mode.clone(),
+        }
+    }
+}
+
+impl GitHubConfig {
+    /// 詳細設定を取得
+    pub fn get_advanced_config(&self) -> Option<&GitHubAgentConfig> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => Some(config),
         }
     }
 }

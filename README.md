@@ -10,7 +10,7 @@ AI コーディングエージェント用の context ファイルを統一設�
 
 - **✅ Cursor**: `.cursor/rules/*.mdc` ファイル（split_config対応）
 - **✅ Cline**: `.clinerules/*.md` ファイル
-- **✅ GitHub Copilot**: `.github/prompts/*.md` または `.github/copilot-instructions.md`
+- **✅ GitHub Copilot**: `.github/instructions/*.instructions.md` または `.github/copilot-instructions.md`（applyTo オプション対応）
 - **✅ Claude Code**: `CLAUDE.md`
 - **✅ OpenAI Codex**: `AGENTS.md`
 
@@ -108,7 +108,13 @@ agents:
 
   github:
     enabled: true
-    output_mode: merged
+    output_mode: split
+    split_config:       # GitHub applyTo オプション対応
+      rules:
+        - file_patterns: ["*architecture*", "*design*"]
+          apply_to: ["**/*.rs", "**/*.toml"]
+        - file_patterns: ["*frontend*", "*ui*"]
+          apply_to: ["**/*.ts", "**/*.tsx"]
 
   claude:
     enabled: true
@@ -301,10 +307,11 @@ aicm/
 **GitHub Copilot**
 ```
 .github/
-├── prompts/
-│   ├── 01-project-overview.md
+├── instructions/
+│   ├── architecture.instructions.md   # applyTo: "**/*.rs,**/*.toml"
+│   ├── frontend.instructions.md       # applyTo: "**/*.ts,**/*.tsx"
 │   └── ...
-└── copilot-instructions.md   # merged モード時
+└── copilot-instructions.md            # merged モード時
 ```
 
 **Claude Code**
@@ -408,9 +415,9 @@ your-project/
 ├── .clinerules/
 │   └── context.md              # 全コンテンツ統合
 ├── .github/
-│   └── prompts/
-│       ├── 01-project-overview.md
-│       ├── 02-architecture.md
+│   └── instructions/
+│       ├── architecture.instructions.md   # applyTo frontmatter付き
+│       ├── frontend.instructions.md       # applyTo frontmatter付き
 │       └── ...
 ├── CLAUDE.md                   # Claude用（全コンテンツ統合）
 └── AGENTS.md                   # Codex用（全コンテンツ統合）

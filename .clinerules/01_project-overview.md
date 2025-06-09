@@ -19,7 +19,7 @@
 
 1. **✅ Cursor**: `.cursor/rules/*.mdc` ファイル（実装済み）
 2. **✅ Cline**: `.clinerules/*.md` ファイル（実装済み）
-3. **✅ GitHub Copilot**: `.github/instructions/*.instructions.md` または `.github/copilot-instructions.md`（applyTo オプション対応済み）
+3. **✅ GitHub Copilot**: `.github/prompts/*.md` または `.github/copilot-instructions.md`（実装済み）
 4. **✅ Claude Code**: `CLAUDE.md`（実装済み）
 5. **✅ OpenAI Codex**: `AGENTS.md`（実装済み）
 

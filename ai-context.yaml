@@ -14,3 +14,9 @@ agents:
           description: "開発ルール関連のエージェント要求"
         - file_patterns: ["*setup*", "*development-setup*"]
           manual: true
+  claude: true
+  codex: true
+  github:
+    output_mode: split
+  cline:
+    output_mode: split
