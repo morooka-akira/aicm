@@ -128,7 +128,6 @@ pub struct CursorSplitRule {
     pub manual: Option<bool>,
 }
 
-
 /// Cline エージェント詳細設定
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClineAgentConfig {
@@ -391,8 +390,10 @@ mod tests {
 
     #[test]
     fn test_effective_output_mode_global_fallback() {
-        let mut config = AIContextConfig::default();
-        config.output_mode = Some(OutputMode::Split);
+        let mut config = AIContextConfig {
+            output_mode: Some(OutputMode::Split),
+            ..Default::default()
+        };
         config.agents.cursor = CursorConfig::Simple(true);
 
         // エージェント個別設定なし → グローバル設定を使用
@@ -404,8 +405,10 @@ mod tests {
 
     #[test]
     fn test_effective_output_mode_agent_override() {
-        let mut config = AIContextConfig::default();
-        config.output_mode = Some(OutputMode::Split);
+        let mut config = AIContextConfig {
+            output_mode: Some(OutputMode::Split),
+            ..Default::default()
+        };
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
             output_mode: Some(OutputMode::Merged),
@@ -421,8 +424,10 @@ mod tests {
 
     #[test]
     fn test_effective_output_mode_claude_always_merged() {
-        let mut config = AIContextConfig::default();
-        config.output_mode = Some(OutputMode::Split);
+        let mut config = AIContextConfig {
+            output_mode: Some(OutputMode::Split),
+            ..Default::default()
+        };
         config.agents.claude = ClaudeConfig::Advanced(ClaudeAgentConfig {
             enabled: true,
             output_mode: Some(OutputMode::Split), // 設定されていても無視される
@@ -485,7 +490,7 @@ mod tests {
 
         assert!(deserialized.is_enabled());
         assert_eq!(deserialized.get_output_mode(), Some(OutputMode::Split));
-        
+
         // split_config: null が出力されないことを確認
         assert!(!yaml.contains("split_config"));
     }

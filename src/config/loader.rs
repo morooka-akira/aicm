@@ -140,8 +140,10 @@ agents: not_an_object
 
     #[tokio::test]
     async fn test_validate_config_missing_version() {
-        let mut config = AIContextConfig::default();
-        config.version = "".to_string();
+        let config = AIContextConfig {
+            version: "".to_string(),
+            ..Default::default()
+        };
 
         let result = ConfigLoader::validate_config(&config);
         assert!(result.is_err());
@@ -155,8 +157,10 @@ agents: not_an_object
 
     #[tokio::test]
     async fn test_validate_config_missing_base_docs_dir() {
-        let mut config = AIContextConfig::default();
-        config.base_docs_dir = "".to_string();
+        let config = AIContextConfig {
+            base_docs_dir: "".to_string(),
+            ..Default::default()
+        };
 
         let result = ConfigLoader::validate_config(&config);
         assert!(result.is_err());
