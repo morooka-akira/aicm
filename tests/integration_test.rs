@@ -9,7 +9,7 @@ use std::process::Command;
 #[test]
 fn test_cli_help_command() {
     let output = Command::new("cargo")
-        .args(&["run", "--", "--help"])
+        .args(["run", "--", "--help"])
         .output()
         .expect("Failed to execute command");
 
@@ -24,7 +24,7 @@ fn test_cli_help_command() {
 #[test]
 fn test_cli_version_command() {
     let output = Command::new("cargo")
-        .args(&["run", "--", "--version"])
+        .args(["run", "--", "--version"])
         .output()
         .expect("Failed to execute command");
 
