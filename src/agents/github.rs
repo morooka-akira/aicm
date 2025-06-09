@@ -93,20 +93,29 @@ impl GitHubAgent {
     async fn cleanup_split_files(&self) -> Result<()> {
         use tokio::fs;
 
-        // .github/instructions ディレクトリの .instructions.md ファイルを削除
-        if fs::metadata(".github/instructions").await.is_ok() {
-            let mut entries = fs::read_dir(".github/instructions").await?;
-            while let Some(entry) = entries.next_entry().await? {
-                let path = entry.path();
-                if path.is_file() {
-                    if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-                        if file_name.ends_with(".instructions.md") {
-                            fs::remove_file(path).await?;
-                        }
+        // .github/instructions がディレクトリでなければ何もしない
+        let metadata = match fs::metadata(".github/instructions").await {
+            Ok(m) => m,
+            Err(_) => return Ok(()),
+        };
+
+        if !metadata.is_dir() {
+            return Ok(());
+        }
+
+        // ディレクトリ内の .instructions.md ファイルを削除
+        let mut entries = fs::read_dir(".github/instructions").await?;
+        while let Some(entry) = entries.next_entry().await? {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    if file_name.ends_with(".instructions.md") {
+                        fs::remove_file(path).await?;
                     }
                 }
             }
         }
+
         Ok(())
     }
 
@@ -257,5 +266,31 @@ mod tests {
         // 内容は含まれていることを確認
         assert!(content.contains("# Test"));
         assert!(content.contains("Content here"));
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_split_files_ignores_file_path() {
+        // .github/instructions がファイルの場合でもエラーなく終了すること
+        let temp_dir = tempdir().unwrap();
+
+        // setup: instructions をファイルとして作成
+        fs::create_dir_all(".github").await.unwrap();
+        // 既存のパスを削除してからファイルを作成
+        let _ = fs::remove_file(".github/instructions").await;
+        let _ = fs::remove_dir_all(".github/instructions").await;
+        fs::write(".github/instructions", "dummy").await.unwrap();
+
+        let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Split);
+        let agent = GitHubAgent::new(config);
+
+        // 実行してもエラーが発生しないこと
+        agent.cleanup_split_files().await.unwrap();
+
+        // ファイルはそのまま残っていることを確認
+        let metadata = fs::metadata(".github/instructions").await.unwrap();
+        assert!(metadata.is_file());
+
+        // 後片付け
+        fs::remove_file(".github/instructions").await.unwrap();
     }
 }
