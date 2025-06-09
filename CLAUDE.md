@@ -191,7 +191,6 @@ cargo test
 cargo run -- init
 cargo run -- generate
 cargo run -- validate
-cargo run -- list-agents
 
 # リント・フォーマット
 cargo fmt     # コードフォーマット

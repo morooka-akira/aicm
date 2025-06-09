@@ -55,8 +55,6 @@ aicm generate --agent cursor
 # 設定ファイルを検証
 aicm validate
 
-# 利用可能なエージェント一覧を表示
-aicm list-agents
 ```
 
 ## ⚙️ 設定ファイル仕様
