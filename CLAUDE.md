@@ -175,8 +175,8 @@ cargo test --test integration_test
 
 ```bash
 # プロジェクトクローン
-git clone https://github.com/morooka-akira/ai-context-management
-cd ai-context-management
+git clone https://github.com/morooka-akira/aicm
+cd aicm
 
 # ビルド
 cargo build
