@@ -2,8 +2,6 @@
 applyTo: "**/*.rs,**/*.toml"
 ---
 
-# 03_architecture.md
-
 # アーキテクチャノート
 
 ## 設計原則

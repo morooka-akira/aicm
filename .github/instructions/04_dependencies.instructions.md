@@ -2,8 +2,6 @@
 applyTo: "**/Cargo.toml,**/package.json"
 ---
 
-# 04_dependencies.md
-
 # 依存関係
 
 ## 主要なクレート

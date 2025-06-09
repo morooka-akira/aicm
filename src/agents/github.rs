@@ -106,46 +106,35 @@ impl GitHubAgent {
         // 各ルールに対してマッチするファイルを処理
         for rule in rules {
             // ルールにマッチするファイルを収集
-            let matching_files: Vec<_> = files
-                .iter()
-                .filter(|(file_name, _)| {
-                    if processed_files.contains(file_name.as_str()) {
-                        return false;
-                    }
-                    rule.file_patterns
-                        .iter()
-                        .any(|pattern| self.file_matches_pattern(file_name, pattern))
-                })
-                .collect();
+            for (file_name, content) in files {
+                if processed_files.contains(file_name.as_str()) {
+                    continue;
+                }
 
-            if matching_files.is_empty() {
-                continue;
+                // ファイルがルールにマッチするかチェック
+                let matches = rule
+                    .file_patterns
+                    .iter()
+                    .any(|pattern| self.file_matches_pattern(file_name, pattern));
+
+                if matches {
+                    // マッチしたファイルを処理済みとしてマーク
+                    processed_files.insert(file_name.as_str());
+
+                    // applyTo フロントマターを追加
+                    let instructions_content =
+                        self.create_instructions_content_with_apply_to(content, &rule.apply_to);
+
+                    // 元のファイル名を保持
+                    let base_name = file_name.trim_end_matches(".md");
+                    let safe_name = base_name.replace(['/', '\\'], "_");
+
+                    generated_files.push(GeneratedFile::new(
+                        format!(".github/instructions/{}.instructions.md", safe_name),
+                        instructions_content,
+                    ));
+                }
             }
-
-            // マッチしたファイルを処理済みとしてマーク
-            for (file_name, _) in &matching_files {
-                processed_files.insert(file_name.as_str());
-            }
-
-            // マッチしたファイルのコンテンツを結合
-            let combined_content = matching_files
-                .iter()
-                .map(|(file_name, content)| format!("# {}\n\n{}", file_name, content))
-                .collect::<Vec<_>>()
-                .join("\n\n");
-
-            // applyTo フロントマターを追加
-            let instructions_content =
-                self.create_instructions_content_with_apply_to(&combined_content, &rule.apply_to);
-
-            // ルールに基づいたファイル名を生成
-            let rule_name = self.generate_rule_filename(&rule.file_patterns);
-            let safe_name = rule_name.replace(['/', '\\'], "_");
-
-            generated_files.push(GeneratedFile::new(
-                format!(".github/instructions/{}.instructions.md", safe_name),
-                instructions_content,
-            ));
         }
 
         // マッチしなかったファイルはデフォルトでそのまま出力（apply_toなし）
@@ -186,17 +175,6 @@ impl GitHubAgent {
 
         // 完全一致またはサブストリング一致
         file_name.contains(pattern)
-    }
-
-    /// ルールのファイルパターンからファイル名を生成
-    fn generate_rule_filename(&self, file_patterns: &[String]) -> String {
-        file_patterns
-            .first()
-            .unwrap_or(&"default".to_string())
-            .trim_start_matches('*')
-            .trim_end_matches('*')
-            .trim_matches(['_', '-'])
-            .to_lowercase()
     }
 
     /// GitHub Copilot用のコンテンツを作成（純粋なMarkdown、フロントマターなし）
@@ -597,16 +575,19 @@ mod tests {
 
         // テスト用ファイルを作成
         fs::write(
-            docs_path.join("architecture.md"),
+            docs_path.join("03_architecture.md"),
             "# Architecture\nSystem design",
         )
         .await
         .unwrap();
-        fs::write(docs_path.join("frontend.md"), "# Frontend\nUI components")
-            .await
-            .unwrap();
         fs::write(
-            docs_path.join("security.md"),
+            docs_path.join("02_frontend.md"),
+            "# Frontend\nUI components",
+        )
+        .await
+        .unwrap();
+        fs::write(
+            docs_path.join("01_security.md"),
             "# Security\nSecurity guidelines",
         )
         .await
@@ -639,25 +620,43 @@ mod tests {
 
         assert_eq!(files.len(), 3); // architecture, frontend, security
 
-        // アーキテクチャファイル（applyTo付き）をチェック
+        // アーキテクチャファイル（applyTo付き、元のファイル名保持）をチェック
         let arch_file = files
             .iter()
-            .find(|f| f.path.contains("architecture"))
+            .find(|f| f.path.contains("03_architecture"))
             .unwrap();
+        assert_eq!(
+            arch_file.path,
+            ".github/instructions/03_architecture.instructions.md"
+        );
         assert!(arch_file.content.contains("---"));
         assert!(arch_file.content.contains("applyTo: \"**/*.rs,**/*.toml\""));
         assert!(arch_file.content.contains("# Architecture"));
 
-        // フロントエンドファイル（applyTo付き）をチェック
-        let frontend_file = files.iter().find(|f| f.path.contains("frontend")).unwrap();
+        // フロントエンドファイル（applyTo付き、元のファイル名保持）をチェック
+        let frontend_file = files
+            .iter()
+            .find(|f| f.path.contains("02_frontend"))
+            .unwrap();
+        assert_eq!(
+            frontend_file.path,
+            ".github/instructions/02_frontend.instructions.md"
+        );
         assert!(frontend_file.content.contains("---"));
         assert!(frontend_file
             .content
             .contains("applyTo: \"**/*.ts,**/*.tsx\""));
         assert!(frontend_file.content.contains("# Frontend"));
 
-        // セキュリティファイル（デフォルト、applyToなし）をチェック
-        let security_file = files.iter().find(|f| f.path.contains("security")).unwrap();
+        // セキュリティファイル（デフォルト、applyToなし、元のファイル名保持）をチェック
+        let security_file = files
+            .iter()
+            .find(|f| f.path.contains("01_security"))
+            .unwrap();
+        assert_eq!(
+            security_file.path,
+            ".github/instructions/01_security.instructions.md"
+        );
         assert!(!security_file.content.contains("---"));
         assert!(!security_file.content.contains("applyTo:"));
         assert!(security_file.content.contains("# Security"));

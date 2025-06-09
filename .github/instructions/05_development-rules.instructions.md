@@ -2,8 +2,6 @@
 applyTo: "**/*.rs,**/*.md"
 ---
 
-# 05_development-rules.md
-
 # 開発ルール
 
 ## テスト要件
@@ -51,43 +49,3 @@ cargo test --test integration_test
 
 - 作業開始時に、`ai-works` ディレクトリに `yyyy-mm-dd-<work name>.md` を作成し、作業内容、要件をまとめてください
 - 指示された場合は、一度作業内容を指示者に確認してもらってから作業を進めてください
-
-
-# 06_development-setup.md
-
-# 開発環境セットアップ
-
-## 必要な環境
-
-- Rust 1.70.0 以上
-- Cargo（Rust と一緒にインストール）
-
-## 主要コマンド
-
-```bash
-# プロジェクトクローン
-git clone https://github.com/morooka-akira/aicm
-cd aicm
-
-# ビルド
-cargo build
-
-# リリースビルド
-cargo build --release
-
-# テスト実行
-cargo test
-
-# 開発版での実行（バイナリ名: aicm）
-cargo run -- init
-cargo run -- generate
-cargo run -- generate --agent cursor
-cargo run -- validate
-
-# リント・フォーマット
-cargo fmt     # コードフォーマット
-cargo clippy  # リント実行
-
-# ドキュメント生成
-cargo doc --open
-```
