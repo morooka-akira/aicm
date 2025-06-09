@@ -101,12 +101,17 @@ impl GitHubAgent {
         rules: &[GitHubSplitRule],
     ) -> Result<Vec<GeneratedFile>> {
         let mut generated_files = Vec::new();
+        let mut processed_files = std::collections::HashSet::new();
 
+        // 各ルールに対してマッチするファイルを処理
         for rule in rules {
             // ルールにマッチするファイルを収集
             let matching_files: Vec<_> = files
                 .iter()
                 .filter(|(file_name, _)| {
+                    if processed_files.contains(file_name.as_str()) {
+                        return false;
+                    }
                     rule.file_patterns
                         .iter()
                         .any(|pattern| self.file_matches_pattern(file_name, pattern))
@@ -115,6 +120,11 @@ impl GitHubAgent {
 
             if matching_files.is_empty() {
                 continue;
+            }
+
+            // マッチしたファイルを処理済みとしてマーク
+            for (file_name, _) in &matching_files {
+                processed_files.insert(file_name.as_str());
             }
 
             // マッチしたファイルのコンテンツを結合
@@ -136,6 +146,20 @@ impl GitHubAgent {
                 format!(".github/instructions/{}.instructions.md", safe_name),
                 instructions_content,
             ));
+        }
+
+        // マッチしなかったファイルはデフォルトでそのまま出力（apply_toなし）
+        for (file_name, content) in files {
+            if !processed_files.contains(file_name.as_str()) {
+                let instructions_content = self.create_instructions_content(content);
+                let base_name = file_name.trim_end_matches(".md");
+                let safe_name = base_name.replace(['/', '\\'], "_");
+
+                generated_files.push(GeneratedFile::new(
+                    format!(".github/instructions/{}.instructions.md", safe_name),
+                    instructions_content,
+                ));
+            }
         }
 
         Ok(generated_files)
@@ -559,5 +583,86 @@ mod tests {
         let content_empty_apply_to =
             agent.create_instructions_content_with_apply_to("Test content", &Some(vec![]));
         assert_eq!(content_empty_apply_to, "Test content");
+    }
+
+    #[tokio::test]
+    async fn test_generate_split_with_apply_to_and_unmatched_files() {
+        let temp_dir = tempdir().unwrap();
+        let _prev_dir = std::env::current_dir().unwrap();
+
+        // テスト用一時ディレクトリに移動
+        std::env::set_current_dir(&temp_dir).unwrap();
+
+        let docs_path = temp_dir.path();
+
+        // テスト用ファイルを作成
+        fs::write(
+            docs_path.join("architecture.md"),
+            "# Architecture\nSystem design",
+        )
+        .await
+        .unwrap();
+        fs::write(docs_path.join("frontend.md"), "# Frontend\nUI components")
+            .await
+            .unwrap();
+        fs::write(
+            docs_path.join("security.md"),
+            "# Security\nSecurity guidelines",
+        )
+        .await
+        .unwrap();
+
+        // split_config 付きの設定を作成（securityファイルはマッチしない）
+        use crate::types::{GitHubAgentConfig, GitHubConfig, GitHubSplitConfig};
+        let github_config = GitHubConfig::Advanced(GitHubAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            split_config: Some(GitHubSplitConfig {
+                rules: vec![
+                    GitHubSplitRule {
+                        file_patterns: vec!["*architecture*".to_string()],
+                        apply_to: Some(vec!["**/*.rs".to_string(), "**/*.toml".to_string()]),
+                    },
+                    GitHubSplitRule {
+                        file_patterns: vec!["*frontend*".to_string()],
+                        apply_to: Some(vec!["**/*.ts".to_string(), "**/*.tsx".to_string()]),
+                    },
+                ],
+            }),
+        });
+
+        let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
+        config.agents.github = github_config;
+
+        let agent = GitHubAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 3); // architecture, frontend, security
+
+        // アーキテクチャファイル（applyTo付き）をチェック
+        let arch_file = files
+            .iter()
+            .find(|f| f.path.contains("architecture"))
+            .unwrap();
+        assert!(arch_file.content.contains("---"));
+        assert!(arch_file.content.contains("applyTo: \"**/*.rs,**/*.toml\""));
+        assert!(arch_file.content.contains("# Architecture"));
+
+        // フロントエンドファイル（applyTo付き）をチェック
+        let frontend_file = files.iter().find(|f| f.path.contains("frontend")).unwrap();
+        assert!(frontend_file.content.contains("---"));
+        assert!(frontend_file
+            .content
+            .contains("applyTo: \"**/*.ts,**/*.tsx\""));
+        assert!(frontend_file.content.contains("# Frontend"));
+
+        // セキュリティファイル（デフォルト、applyToなし）をチェック
+        let security_file = files.iter().find(|f| f.path.contains("security")).unwrap();
+        assert!(!security_file.content.contains("---"));
+        assert!(!security_file.content.contains("applyTo:"));
+        assert!(security_file.content.contains("# Security"));
+
+        // 元のディレクトリに戻る
+        let _ = std::env::set_current_dir(_prev_dir);
     }
 }

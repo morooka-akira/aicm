@@ -40,7 +40,7 @@ AI Context Management Tool (AICM) は、複数の AI コーディングエージ
 
 ### 🚧 GitHub Copilot
 
-- **出力先**: `.github/copilot-instructions.md` (merged) / `.github/prompts/*.md` (split)
+- **出力先**: `.github/copilot-instructions.md` (merged) / `.github/instructions/*.md` (split)
 - **形式**: 純粋な Markdown
 - **モード**: merged（単一ファイル）/ split（複数ファイル）
 

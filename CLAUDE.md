@@ -21,13 +21,32 @@
 
 1. **✅ Cursor**: `.cursor/rules/*.mdc` ファイル（実装済み）
 2. **✅ Cline**: `.clinerules/*.md` ファイル（実装済み）
-3. **✅ GitHub Copilot**: `.github/prompts/*.md` または `.github/copilot-instructions.md`（実装済み）
+3. **✅ GitHub Copilot**: `.github/instructions/*.instructions.md` または `.github/copilot-instructions.md`（applyTo オプション対応済み）
 4. **✅ Claude Code**: `CLAUDE.md`（実装済み）
 5. **✅ OpenAI Codex**: `AGENTS.md`（実装済み）
 
 詳細な設計概要は `docs/concept.md` を参照してください。
 
-# 02_architecture.md
+# 02_security.md
+
+# セキュリティ 🔒
+
+## 機密ファイル
+
+以下のファイルは読み取りや修正を行わないでください：
+
+- .env ファイル
+- \*_/config/secrets._
+- \*_/_.pem
+- API キー、トークン、認証情報を含むファイル
+
+## セキュリティプラクティス
+
+- 機密ファイルをコミットしない
+- シークレットには環境変数を使用
+- 認証情報をログや出力に含めない
+
+# 03_architecture.md
 
 # アーキテクチャノート
 
@@ -98,7 +117,7 @@ Cargo.lock                 # 依存関係ロック
 - **並列処理**: 非同期 I/O による高速ファイル処理
 - **ゼロコピー**: 不要な文字列コピーの回避
 
-# 03_dependencies.md
+# 04_dependencies.md
 
 # 依存関係
 
@@ -117,7 +136,7 @@ Cargo.lock                 # 依存関係ロック
 - **tokio-test**: 非同期テスト
 - **tempfile**: テスト用一時ファイル
 
-# 04_development-rules.md
+# 05_development-rules.md
 
 # 開発ルール
 
@@ -167,7 +186,7 @@ cargo test --test integration_test
 - 作業開始時に、`ai-works` ディレクトリに `yyyy-mm-dd-<work name>.md` を作成し、作業内容、要件をまとめてください
 - 指示された場合は、一度作業内容を指示者に確認してもらってから作業を進めてください
 
-# 05_development-setup.md
+# 06_development-setup.md
 
 # 開発環境セットアップ
 
@@ -205,34 +224,6 @@ cargo clippy  # リント実行
 # ドキュメント生成
 cargo doc --open
 ```
-
-# 06_roadmap.md
-
-# 今後の拡張予定
-
-## ✅ Phase 1: 基本機能 - 完了
-
-- ✅ Cursor エージェント実装
-- ✅ Cline エージェント実装
-- ✅ GitHub Copilot エージェント実装
-- ✅ Claude Code エージェント実装
-- ✅ 基本 CLI インターフェース
-- ✅ YAML 設定ファイル対応
-- ✅ 統合・分割モード対応
-
-## 🚧 Phase 2: 機能拡張
-
-- ウォッチモード（ファイル変更時の自動生成）
-- 設定継承機能
-- 設定ファイルバリデーション強化
-- ヘルプ・ドキュメント生成
-
-## 🔮 Phase 3: 高度な機能
-
-- プラグインシステム（WASM 対応）
-- Web UI
-- クラウド同期
-- カスタムテンプレート機能
 
 # 07_references.md
 
