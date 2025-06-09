@@ -1,3 +1,7 @@
+---
+applyTo: "**"
+---
+
 # プロジェクト概要
 
 このファイルは、このリポジトリでコードを扱う際に Claude Code (claude.ai/code)、Cline, Corsor, Github Copilot、Codex など各種 AI コードエージェント にガイダンスを提供します。

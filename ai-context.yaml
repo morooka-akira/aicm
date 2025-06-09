@@ -14,3 +14,19 @@ agents:
           description: "開発ルール関連のエージェント要求"
         - file_patterns: ["*setup*", "*development-setup*"]
           manual: true
+  claude: true
+  codex: true
+  github:
+    output_mode: split
+    split_config:
+      rules:
+        - file_patterns: ["*project*", "*overview*"]
+          apply_to: ["**"]
+        - file_patterns: ["*architecture*"]
+          apply_to: ["**/*.rs", "**/*.toml"]
+        - file_patterns: ["*development*", "*setup*"]
+          apply_to: ["**/*.rs", "**/*.md"]
+        - file_patterns: ["*dependencies*"]
+          apply_to: ["**/Cargo.toml", "**/package.json"]
+  cline:
+    output_mode: split
