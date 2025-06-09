@@ -286,10 +286,6 @@ agents:
 ```bash
 # 設定をチェック
 aicm validate
-
-# 対応しているAIツールを確認
-aicm list-agents
-
 # ヘルプを表示
 aicm --help
 ```

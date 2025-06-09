@@ -434,8 +434,6 @@ enum Commands {
         #[arg(short, long, default_value = "ai-context.yaml")]
         config: String,
     },
-    /// List available agents
-    ListAgents,
 }
 
 #[tokio::main]
@@ -446,7 +444,6 @@ async fn main() -> Result<()> {
         Commands::Init { config } => handle_init(&config).await,
         Commands::Generate { config, agent } => handle_generate(&config, agent.as_deref()).await,
         Commands::Validate { config } => handle_validate(&config).await,
-        Commands::ListAgents => handle_list_agents().await,
     }
 }
 ```
@@ -598,9 +595,6 @@ aicm --help
 
 # 設定ファイル初期化
 aicm init
-
-# エージェント一覧表示
-aicm list-agents
 
 # コンテキストファイル生成
 aicm generate

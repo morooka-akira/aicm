@@ -150,8 +150,7 @@ pub struct AgentConfig {
 
 **ファイル: `src/main.rs`**
 
-- **簡素化**: init、generate、validateコマンドのみ
-- **削除**: list-agents（設定ファイルを見れば分かる）
+- **現在のコマンド**: init、generate、validate
 
 ### Phase 5: テストの簡素化
 
