@@ -68,7 +68,6 @@ fn test_cli_generate_with_nonexistent_config() {
 }
 
 #[test]
-#[ignore] // 一時的に無効化：統合テスト環境でのパス問題のため
 fn test_cli_generate_with_custom_config() {
     let temp_dir = tempdir().unwrap();
     let config_path = temp_dir.path().join("custom.yaml");
@@ -92,6 +91,9 @@ agents:
     std::fs::create_dir_all(&docs_path).unwrap();
     std::fs::write(docs_path.join("test.md"), "# Test content").unwrap();
 
+    // 現在の作業ディレクトリを取得（プロジェクトルート）
+    let current_dir = std::env::current_dir().unwrap();
+
     let output = Command::new("cargo")
         .args([
             "run",
@@ -100,7 +102,7 @@ agents:
             "--config",
             &config_path.to_string_lossy(),
         ])
-        .env("PWD", temp_dir.path())
+        .current_dir(&current_dir) // プロジェクトルートで実行
         .output()
         .expect("Failed to execute command");
 
@@ -146,9 +148,9 @@ fn test_cli_validate_with_nonexistent_config() {
         .expect("Failed to execute command");
 
     assert!(!output.status.success());
-    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
     // エラーメッセージにファイルが見つからない旨が含まれることを確認
-    assert!(stdout.contains("設定ファイルの検証でエラーが発生しました"));
+    assert!(stderr.contains("設定ファイルの検証でエラーが発生しました"));
 }
 
 #[test]

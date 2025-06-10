@@ -52,11 +52,27 @@ const CONFIG_FILE: &str = "ai-context.yaml";
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    match cli.command {
+    let result = match cli.command {
         Commands::Init => handle_init().await,
         Commands::Generate { agent, config } => handle_generate(agent, config).await,
         Commands::Validate { config } => handle_validate(config).await,
+    };
+
+    // エラーが発生した場合はメッセージを表示して適切な終了コードで終了
+    if let Err(e) = result {
+        // ConfigErrorを適切に表示
+        if let Some(config_error) = e.downcast_ref::<aicm::config::error::ConfigError>() {
+            eprintln!(
+                "❌ 設定ファイルの検証でエラーが発生しました: {}",
+                config_error
+            );
+        } else {
+            eprintln!("❌ エラーが発生しました: {}", e);
+        }
+        std::process::exit(1);
     }
+
+    Ok(())
 }
 
 /// init コマンドの処理
@@ -119,45 +135,33 @@ async fn handle_validate(config_path: Option<String>) -> Result<()> {
     let config_file = config_path.as_deref().unwrap_or(CONFIG_FILE);
     println!("設定ファイルを検証します: {}", config_file);
 
-    match load_config_from_path(config_file).await {
-        Ok(config) => {
-            println!("✅ 設定ファイルは有効です");
+    let config = load_config_from_path(config_file)
+        .await
+        .map_err(anyhow::Error::from)?;
 
-            // 基本情報を表示
-            println!("  バージョン: {}", config.version);
-            println!("  出力モード: {:?}", config.output_mode);
-            println!("  ドキュメントディレクトリ: {}", config.base_docs_dir);
+    println!("✅ 設定ファイルは有効です");
 
-            // 有効なエージェントを表示
-            let enabled = config.enabled_agents();
-            if enabled.is_empty() {
-                println!("  有効なエージェント: なし");
-            } else {
-                println!("  有効なエージェント: {}", enabled.join(", "));
-            }
+    // 基本情報を表示
+    println!("  バージョン: {}", config.version);
+    println!("  出力モード: {:?}", config.output_mode);
+    println!("  ドキュメントディレクトリ: {}", config.base_docs_dir);
 
-            // ドキュメントディレクトリの存在確認
-            if Path::new(&config.base_docs_dir).exists() {
-                println!("  ドキュメントディレクトリ: 存在します");
-            } else {
-                println!(
-                    "  ⚠️  ドキュメントディレクトリが存在しません: {}",
-                    config.base_docs_dir
-                );
-            }
-        }
-        Err(e) => {
-            println!("❌ 設定ファイルの検証でエラーが発生しました: {}", e);
-            // テスト環境では exit を呼ばずに Result::Err を返す
-            if cfg!(test) {
-                return Err(anyhow::anyhow!(
-                    "設定ファイルの検証でエラーが発生しました: {}",
-                    e
-                ));
-            } else {
-                std::process::exit(1);
-            }
-        }
+    // 有効なエージェントを表示
+    let enabled = config.enabled_agents();
+    if enabled.is_empty() {
+        println!("  有効なエージェント: なし");
+    } else {
+        println!("  有効なエージェント: {}", enabled.join(", "));
+    }
+
+    // ドキュメントディレクトリの存在確認
+    if Path::new(&config.base_docs_dir).exists() {
+        println!("  ドキュメントディレクトリ: 存在します");
+    } else {
+        println!(
+            "  ⚠️  ドキュメントディレクトリが存在しません: {}",
+            config.base_docs_dir
+        );
     }
 
     Ok(())
@@ -443,12 +447,11 @@ agents:
     #[tokio::test]
     async fn test_handle_validate_with_nonexistent_config() {
         // 存在しないファイルでvalidateを実行した場合の動作確認
-        // テスト環境では exit を呼ばずに Result::Err を返す
         let result = handle_validate(Some("/nonexistent/config.yaml".to_string())).await;
         assert!(result.is_err());
 
         let error_message = result.unwrap_err().to_string();
-        assert!(error_message.contains("設定ファイルの検証でエラーが発生しました"));
+        assert!(error_message.contains("設定ファイルが見つかりません"));
     }
 
     #[tokio::test]
@@ -462,10 +465,8 @@ agents:
                 // ファイルが存在する場合は正常に処理される
             }
             Err(e) => {
-                // ファイルが存在しない場合はエラーが返される（テスト環境では exit しない）
-                assert!(e
-                    .to_string()
-                    .contains("設定ファイルの検証でエラーが発生しました"));
+                // ファイルが存在しない場合はエラーが返される
+                assert!(e.to_string().contains("設定ファイルが見つかりません"));
             }
         }
     }
