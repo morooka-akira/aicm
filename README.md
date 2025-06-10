@@ -53,12 +53,38 @@ aicm generate
 # 特定のエージェントのみ生成
 aicm generate --agent cursor
 
+# 外部設定ファイルを指定
+aicm generate --config /path/to/custom-config.yaml
+aicm generate -c ./configs/production.yaml
+
+# 特定のエージェントと外部設定の組み合わせ
+aicm generate --agent cursor --config custom.yaml
+
 # 設定ファイルを検証
 aicm validate
 
 ```
 
 ## ⚙️ 設定ファイル仕様
+
+### 外部設定ファイルの使用
+
+`--config` / `-c` オプションを使用して、デフォルトの `ai-context.yaml` 以外の設定ファイルを指定できます。
+
+```bash
+# カスタム設定ファイルを使用
+aicm generate --config production.yaml
+aicm generate -c ./configs/staging.yaml
+
+# 絶対パスも使用可能
+aicm generate --config /etc/aicm/production.yaml
+```
+
+この機能により、以下のような使い方が可能です：
+
+- **環境別設定**: 開発・ステージング・本番環境ごとに異なる設定
+- **チーム別設定**: チームごとに最適化された設定ファイル
+- **プロジェクト別設定**: 複数プロジェクトでの設定ファイル共有
 
 ### 基本設定（ai-context.yaml）
 
@@ -451,6 +477,12 @@ aicm generate
 
 # Cursor専用ファイルのみ生成
 aicm generate --agent cursor
+
+# 外部設定ファイルを使用
+aicm generate --config production.yaml
+
+# 特定エージェント + 外部設定ファイル
+aicm generate --agent github --config ./configs/github-only.yaml
 
 # 設定ファイルの妥当性確認
 aicm validate

@@ -5,6 +5,7 @@
  */
 
 use std::process::Command;
+use tempfile::tempdir;
 
 #[test]
 fn test_cli_help_command() {
@@ -31,4 +32,87 @@ fn test_cli_version_command() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("aicm"));
+}
+
+#[test]
+fn test_cli_generate_help_includes_config_option() {
+    let output = Command::new("cargo")
+        .args(["run", "--", "generate", "--help"])
+        .output()
+        .expect("Failed to execute command");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("--config"));
+    assert!(stdout.contains("-c"));
+    assert!(stdout.contains("設定ファイルのパス"));
+}
+
+#[test]
+fn test_cli_generate_with_nonexistent_config() {
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "--",
+            "generate",
+            "--config",
+            "/nonexistent/config.yaml",
+        ])
+        .output()
+        .expect("Failed to execute command");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    // エラーメッセージにファイルが見つからない旨が含まれることを確認
+    assert!(stderr.contains("nonexistent") || stderr.contains("FileNotFound"));
+}
+
+#[test]
+fn test_cli_generate_with_custom_config() {
+    let temp_dir = tempdir().unwrap();
+    let config_path = temp_dir.path().join("custom.yaml");
+    let docs_path = temp_dir.path().join("docs");
+
+    // カスタム設定ファイルを作成
+    let config_content = format!(
+        r#"
+version: "1.0"
+output_mode: merged
+base_docs_dir: "{}"
+agents:
+  claude: true
+"#,
+        docs_path.to_string_lossy()
+    );
+
+    std::fs::write(&config_path, config_content).unwrap();
+
+    // docsディレクトリを作成
+    std::fs::create_dir_all(&docs_path).unwrap();
+    std::fs::write(docs_path.join("test.md"), "# Test content").unwrap();
+
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "--",
+            "generate",
+            "--config",
+            &config_path.to_string_lossy(),
+        ])
+        .current_dir(temp_dir.path())
+        .output()
+        .expect("Failed to execute command");
+
+    // 成功することを確認
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+
+    if !output.status.success() {
+        println!("STDOUT: {}", stdout);
+        println!("STDERR: {}", stderr);
+    }
+    assert!(output.status.success());
+
+    assert!(stdout.contains("コンテキストファイルを生成します"));
+    assert!(stdout.contains("custom.yaml"));
 }

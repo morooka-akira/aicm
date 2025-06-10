@@ -34,6 +34,9 @@ enum Commands {
         /// 特定のエージェントのみ生成
         #[arg(long)]
         agent: Option<String>,
+        /// 設定ファイルのパス
+        #[arg(short, long)]
+        config: Option<String>,
     },
     /// 設定ファイルを検証
     Validate,
@@ -47,7 +50,7 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Commands::Init => handle_init().await,
-        Commands::Generate { agent } => handle_generate(agent).await,
+        Commands::Generate { agent, config } => handle_generate(agent, config).await,
         Commands::Validate => handle_validate().await,
     }
 }
@@ -72,11 +75,12 @@ async fn handle_init() -> Result<()> {
 }
 
 /// generate コマンドの処理
-async fn handle_generate(agent_filter: Option<String>) -> Result<()> {
-    println!("コンテキストファイルを生成します: {}", CONFIG_FILE);
+async fn handle_generate(agent_filter: Option<String>, config_path: Option<String>) -> Result<()> {
+    let config_file = config_path.as_deref().unwrap_or(CONFIG_FILE);
+    println!("コンテキストファイルを生成します: {}", config_file);
 
     // 設定ファイルを読み込み
-    let config = load_config().await?;
+    let config = load_config_from_path(config_file).await?;
 
     // 有効なエージェントを取得
     let enabled_agents = get_enabled_agents(&config, agent_filter);
@@ -146,15 +150,20 @@ async fn handle_validate() -> Result<()> {
     Ok(())
 }
 
-/// 設定ファイルを読み込み
+/// 設定ファイルを読み込み（デフォルトパス）
 async fn load_config() -> Result<AIContextConfig, ConfigError> {
-    if !Path::new(CONFIG_FILE).exists() {
+    load_config_from_path(CONFIG_FILE).await
+}
+
+/// 指定されたパスから設定ファイルを読み込み
+async fn load_config_from_path(config_path: &str) -> Result<AIContextConfig, ConfigError> {
+    if !Path::new(config_path).exists() {
         return Err(ConfigError::FileNotFound {
-            path: CONFIG_FILE.to_string(),
+            path: config_path.to_string(),
         });
     }
 
-    ConfigLoader::load(CONFIG_FILE).await
+    ConfigLoader::load(config_path).await
 }
 
 /// ドキュメントディレクトリを作成
@@ -285,6 +294,9 @@ async fn write_generated_file(file: &GeneratedFile) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aicm::types::AgentConfigTrait;
+    use tempfile::tempdir;
+    use tokio::fs;
 
     #[test]
     fn test_create_readme_content() {
@@ -320,5 +332,73 @@ mod tests {
         let config = AIContextConfig::default();
         let agents = get_enabled_agents(&config, None);
         assert!(agents.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_load_config_from_path_valid() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("custom-config.yaml");
+
+        let test_config_content = r#"
+version: "1.0"
+output_mode: split
+base_docs_dir: "./custom-docs"
+agents:
+  cursor: true
+  claude: true
+"#;
+
+        fs::write(&config_path, test_config_content).await.unwrap();
+
+        let config = load_config_from_path(&config_path.to_string_lossy())
+            .await
+            .unwrap();
+        assert_eq!(config.version, "1.0");
+        assert_eq!(config.base_docs_dir, "./custom-docs");
+        assert!(config.agents.cursor.is_enabled());
+        assert!(config.agents.claude.is_enabled());
+    }
+
+    #[tokio::test]
+    async fn test_load_config_from_path_not_found() {
+        let result = load_config_from_path("/nonexistent/config.yaml").await;
+        assert!(result.is_err());
+
+        if let Err(ConfigError::FileNotFound { path }) = result {
+            assert_eq!(path, "/nonexistent/config.yaml");
+        } else {
+            panic!("Expected FileNotFound error");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_load_config_from_path_invalid_yaml() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("invalid.yaml");
+
+        let invalid_yaml = r#"
+version: 1.0
+invalid_yaml: [
+"#;
+
+        fs::write(&config_path, invalid_yaml).await.unwrap();
+
+        let result = load_config_from_path(&config_path.to_string_lossy()).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ConfigError::YamlError { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_load_config_default_fallback() {
+        // デフォルトのload_config関数がload_config_from_pathを使用することを確認
+        let result = load_config().await;
+        // デフォルトファイルが存在しない場合はFileNotFoundエラーが返される
+        assert!(result.is_err());
+
+        if let Err(ConfigError::FileNotFound { path }) = result {
+            assert_eq!(path, CONFIG_FILE);
+        } else {
+            panic!("Expected FileNotFound error for default config file");
+        }
     }
 }
