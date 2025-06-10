@@ -120,7 +120,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(output_mode),
-            include_filenames: None,
+            include_filenames: Some(true), // テスト用にヘッダーを有効化
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
