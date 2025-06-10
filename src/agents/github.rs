@@ -23,7 +23,7 @@ pub struct GitHubAgent {
 impl GitHubAgent {
     /// 新しいGitHub Copilotエージェントを作成
     pub fn new(config: AIContextConfig) -> Self {
-        Self { 
+        Self {
             config,
             base_dir: None,
         }
@@ -68,10 +68,7 @@ impl GitHubAgent {
             ".github/copilot-instructions.md".to_string()
         };
 
-        Ok(vec![GeneratedFile::new(
-            output_path,
-            instructions_content,
-        )])
+        Ok(vec![GeneratedFile::new(output_path, instructions_content)])
     }
 
     /// 分割モード：.github/instructions/xxx.instructions.md ファイルを生成
@@ -107,15 +104,15 @@ impl GitHubAgent {
             let safe_name = base_name.replace(['/', '\\'], "_"); // パス区切り文字をアンダースコアに変換
 
             let output_path = if let Some(base_dir) = &self.base_dir {
-                format!("{}/.github/instructions/{}.instructions.md", base_dir, safe_name)
+                format!(
+                    "{}/.github/instructions/{}.instructions.md",
+                    base_dir, safe_name
+                )
             } else {
                 format!(".github/instructions/{}.instructions.md", safe_name)
             };
 
-            generated_files.push(GeneratedFile::new(
-                output_path,
-                instructions_content,
-            ));
+            generated_files.push(GeneratedFile::new(output_path, instructions_content));
         }
 
         Ok(generated_files)
@@ -157,15 +154,15 @@ impl GitHubAgent {
                     let safe_name = base_name.replace(['/', '\\'], "_");
 
                     let output_path = if let Some(base_dir) = &self.base_dir {
-                        format!("{}/.github/instructions/{}.instructions.md", base_dir, safe_name)
+                        format!(
+                            "{}/.github/instructions/{}.instructions.md",
+                            base_dir, safe_name
+                        )
                     } else {
                         format!(".github/instructions/{}.instructions.md", safe_name)
                     };
 
-                    generated_files.push(GeneratedFile::new(
-                        output_path,
-                        instructions_content,
-                    ));
+                    generated_files.push(GeneratedFile::new(output_path, instructions_content));
                 }
             }
         }
@@ -178,15 +175,15 @@ impl GitHubAgent {
                 let safe_name = base_name.replace(['/', '\\'], "_");
 
                 let output_path = if let Some(base_dir) = &self.base_dir {
-                    format!("{}/.github/instructions/{}.instructions.md", base_dir, safe_name)
+                    format!(
+                        "{}/.github/instructions/{}.instructions.md",
+                        base_dir, safe_name
+                    )
                 } else {
                     format!(".github/instructions/{}.instructions.md", safe_name)
                 };
 
-                generated_files.push(GeneratedFile::new(
-                    output_path,
-                    instructions_content,
-                ));
+                generated_files.push(GeneratedFile::new(output_path, instructions_content));
             }
         }
 
@@ -275,7 +272,7 @@ impl GitHubAgent {
         } else {
             ".github/copilot-instructions.md".to_string()
         };
-        
+
         if fs::metadata(&merged_file_path).await.is_ok() {
             fs::remove_file(&merged_file_path).await?;
         }
@@ -323,11 +320,15 @@ mod tests {
         let temp_dir = tempdir().unwrap();
 
         let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Merged);
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
-        let expected_path = format!("{}/.github/copilot-instructions.md", temp_dir.path().to_string_lossy());
+        let expected_path = format!(
+            "{}/.github/copilot-instructions.md",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(files[0].path, expected_path);
     }
 
@@ -340,11 +341,15 @@ mod tests {
         std::fs::write(docs_path.join("test.md"), "# Test Content\nThis is a test.").unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Merged);
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
-        let expected_path = format!("{}/.github/copilot-instructions.md", temp_dir.path().to_string_lossy());
+        let expected_path = format!(
+            "{}/.github/copilot-instructions.md",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(files[0].path, expected_path);
 
         // ファイル名のヘッダーが含まれることを確認
@@ -364,15 +369,22 @@ mod tests {
         std::fs::write(docs_path.join("file2.md"), "Content 2").unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 2);
 
         // ファイル名とパスをチェック
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
-        let expected_path1 = format!("{}/.github/instructions/file1.instructions.md", temp_dir.path().to_string_lossy());
-        let expected_path2 = format!("{}/.github/instructions/file2.instructions.md", temp_dir.path().to_string_lossy());
+        let expected_path1 = format!(
+            "{}/.github/instructions/file1.instructions.md",
+            temp_dir.path().to_string_lossy()
+        );
+        let expected_path2 = format!(
+            "{}/.github/instructions/file2.instructions.md",
+            temp_dir.path().to_string_lossy()
+        );
         assert!(paths.contains(&&expected_path1));
         assert!(paths.contains(&&expected_path2));
 
@@ -399,13 +411,17 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
 
         // パス区切り文字がアンダースコアに変換されていることを確認
-        let expected_path = format!("{}/.github/instructions/subdir_nested.instructions.md", temp_dir.path().to_string_lossy());
+        let expected_path = format!(
+            "{}/.github/instructions/subdir_nested.instructions.md",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(files[0].path, expected_path);
         assert!(files[0].content.contains("Nested content"));
     }
@@ -421,7 +437,8 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Merged);
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         let content = &files[0].content;
@@ -452,7 +469,8 @@ mod tests {
         std::fs::write(&instructions_path, "dummy").unwrap();
 
         let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Split);
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         // 実行してもエラーが発生しないこと
         agent.cleanup_split_files().await.unwrap();
@@ -498,7 +516,8 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.github = github_config;
 
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
         assert_eq!(files.len(), 2);
@@ -525,7 +544,8 @@ mod tests {
     async fn test_file_matches_pattern() {
         let temp_dir = tempdir().unwrap();
         let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Split);
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         // "*pattern*" のテスト
         assert!(agent.file_matches_pattern("test-architecture-doc.md", "*architecture*"));
@@ -548,7 +568,8 @@ mod tests {
     async fn test_create_instructions_content_with_apply_to() {
         let temp_dir = tempdir().unwrap();
         let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Split);
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         // applyTo が設定されている場合
         let content_with_apply_to = agent.create_instructions_content_with_apply_to(
@@ -615,7 +636,8 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.github = github_config;
 
-        let agent = GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
         assert_eq!(files.len(), 3); // architecture, frontend, security
@@ -625,7 +647,10 @@ mod tests {
             .iter()
             .find(|f| f.path.contains("03_architecture"))
             .unwrap();
-        let expected_arch_path = format!("{}/.github/instructions/03_architecture.instructions.md", temp_dir.path().to_string_lossy());
+        let expected_arch_path = format!(
+            "{}/.github/instructions/03_architecture.instructions.md",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(arch_file.path, expected_arch_path);
         assert!(arch_file.content.contains("---"));
         assert!(arch_file.content.contains("applyTo: \"**/*.rs,**/*.toml\""));
@@ -636,7 +661,10 @@ mod tests {
             .iter()
             .find(|f| f.path.contains("02_frontend"))
             .unwrap();
-        let expected_frontend_path = format!("{}/.github/instructions/02_frontend.instructions.md", temp_dir.path().to_string_lossy());
+        let expected_frontend_path = format!(
+            "{}/.github/instructions/02_frontend.instructions.md",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(frontend_file.path, expected_frontend_path);
         assert!(frontend_file.content.contains("---"));
         assert!(frontend_file
@@ -649,7 +677,10 @@ mod tests {
             .iter()
             .find(|f| f.path.contains("01_security"))
             .unwrap();
-        let expected_security_path = format!("{}/.github/instructions/01_security.instructions.md", temp_dir.path().to_string_lossy());
+        let expected_security_path = format!(
+            "{}/.github/instructions/01_security.instructions.md",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(security_file.path, expected_security_path);
         assert!(!security_file.content.contains("---"));
         assert!(!security_file.content.contains("applyTo:"));

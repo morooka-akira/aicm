@@ -18,7 +18,7 @@ pub struct CursorAgent {
 impl CursorAgent {
     /// 新しいCursorエージェントを作成
     pub fn new(config: AIContextConfig) -> Self {
-        Self { 
+        Self {
             config,
             base_dir: None,
         }
@@ -280,11 +280,15 @@ mod tests {
     async fn test_generate_merged_empty() {
         let temp_dir = tempdir().unwrap();
         let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Merged);
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
-        let expected_path = format!("{}/.cursor/rules/context.mdc", temp_dir.path().to_string_lossy());
+        let expected_path = format!(
+            "{}/.cursor/rules/context.mdc",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(files[0].path, expected_path);
         assert!(files[0].content.contains("---"));
         assert!(files[0].content.contains("alwaysApply: true"));
@@ -301,11 +305,15 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Merged);
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
-        let expected_path = format!("{}/.cursor/rules/context.mdc", temp_dir.path().to_string_lossy());
+        let expected_path = format!(
+            "{}/.cursor/rules/context.mdc",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(files[0].path, expected_path);
         assert!(files[0].content.contains("# test.md"));
         assert!(files[0].content.contains("# Test Content"));
@@ -326,15 +334,22 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 2);
 
         // ファイル名とパスをチェック
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
-        let expected_path1 = format!("{}/.cursor/rules/file1.mdc", temp_dir.path().to_string_lossy());
-        let expected_path2 = format!("{}/.cursor/rules/file2.mdc", temp_dir.path().to_string_lossy());
+        let expected_path1 = format!(
+            "{}/.cursor/rules/file1.mdc",
+            temp_dir.path().to_string_lossy()
+        );
+        let expected_path2 = format!(
+            "{}/.cursor/rules/file2.mdc",
+            temp_dir.path().to_string_lossy()
+        );
         assert!(paths.contains(&&expected_path1));
         assert!(paths.contains(&&expected_path2));
 
@@ -364,13 +379,17 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
 
         // パス区切り文字がアンダースコアに変換されているかチェック
-        let expected_path = format!("{}/.cursor/rules/subdir_nested.mdc", temp_dir.path().to_string_lossy());
+        let expected_path = format!(
+            "{}/.cursor/rules/subdir_nested.mdc",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(files[0].path, expected_path);
         assert!(files[0].content.contains("Nested content"));
     }
@@ -408,7 +427,8 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let rules_dir = temp_dir.path().join(".cursor/rules");
         let config = create_test_config("./docs", OutputMode::Merged);
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         // ディレクトリが存在しない状態から開始
         assert!(!rules_dir.exists());
@@ -429,7 +449,8 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let rules_dir = temp_dir.path().join(".cursor/rules");
         let config = create_test_config("./docs", OutputMode::Merged);
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         // ディレクトリを作成
         fs::create_dir_all(&rules_dir).await.unwrap();
@@ -475,13 +496,17 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Merged);
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
 
         // 正しいパスが生成されることを確認
         assert_eq!(files.len(), 1);
-        let expected_path = format!("{}/.cursor/rules/context.mdc", temp_dir.path().to_string_lossy());
+        let expected_path = format!(
+            "{}/.cursor/rules/context.mdc",
+            temp_dir.path().to_string_lossy()
+        );
         assert_eq!(files[0].path, expected_path);
         assert!(files[0].content.contains("# Test Content"));
     }
@@ -500,15 +525,22 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
 
         // 正しいパスが生成されることを確認
         assert_eq!(files.len(), 2);
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
-        let expected_path1 = format!("{}/.cursor/rules/file1.mdc", temp_dir.path().to_string_lossy());
-        let expected_path2 = format!("{}/.cursor/rules/file2.mdc", temp_dir.path().to_string_lossy());
+        let expected_path1 = format!(
+            "{}/.cursor/rules/file1.mdc",
+            temp_dir.path().to_string_lossy()
+        );
+        let expected_path2 = format!(
+            "{}/.cursor/rules/file2.mdc",
+            temp_dir.path().to_string_lossy()
+        );
         assert!(paths.contains(&&expected_path1));
         assert!(paths.contains(&&expected_path2));
     }
@@ -541,7 +573,8 @@ mod tests {
             }),
         });
 
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
         // manual.mdcファイルが生成されることを確認
@@ -579,7 +612,8 @@ mod tests {
             }),
         });
 
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
         let always_file = files.iter().find(|f| f.path.contains("always")).unwrap();
@@ -616,7 +650,8 @@ mod tests {
             }),
         });
 
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
         let rust_file = files.iter().find(|f| f.path.contains("rust")).unwrap();
@@ -653,7 +688,8 @@ mod tests {
             }),
         });
 
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
         let agent_file = files.iter().find(|f| f.path.contains("agent")).unwrap();
@@ -692,7 +728,8 @@ mod tests {
             }),
         });
 
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
         let multi_file = files.iter().find(|f| f.path.contains("multi")).unwrap();
@@ -729,7 +766,8 @@ mod tests {
             }),
         });
 
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 2);
 
@@ -790,7 +828,8 @@ mod tests {
             }),
         });
 
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
         // manualが最優先なので、manual: trueのみ含まれるべき
@@ -835,7 +874,8 @@ mod tests {
             }),
         });
 
-        let agent = CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
+        let agent =
+            CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
         assert_eq!(files.len(), 1);
