@@ -34,9 +34,16 @@ enum Commands {
         /// 特定のエージェントのみ生成
         #[arg(long)]
         agent: Option<String>,
+        /// 設定ファイルのパス
+        #[arg(short, long)]
+        config: Option<String>,
     },
     /// 設定ファイルを検証
-    Validate,
+    Validate {
+        /// 設定ファイルのパス
+        #[arg(short, long)]
+        config: Option<String>,
+    },
 }
 
 const CONFIG_FILE: &str = "ai-context.yaml";
@@ -45,11 +52,27 @@ const CONFIG_FILE: &str = "ai-context.yaml";
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    match cli.command {
+    let result = match cli.command {
         Commands::Init => handle_init().await,
-        Commands::Generate { agent } => handle_generate(agent).await,
-        Commands::Validate => handle_validate().await,
+        Commands::Generate { agent, config } => handle_generate(agent, config).await,
+        Commands::Validate { config } => handle_validate(config).await,
+    };
+
+    // エラーが発生した場合はメッセージを表示して適切な終了コードで終了
+    if let Err(e) = result {
+        // ConfigErrorを適切に表示
+        if let Some(config_error) = e.downcast_ref::<aicm::config::error::ConfigError>() {
+            eprintln!(
+                "❌ 設定ファイルの検証でエラーが発生しました: {}",
+                config_error
+            );
+        } else {
+            eprintln!("❌ エラーが発生しました: {}", e);
+        }
+        std::process::exit(1);
     }
+
+    Ok(())
 }
 
 /// init コマンドの処理
@@ -72,11 +95,12 @@ async fn handle_init() -> Result<()> {
 }
 
 /// generate コマンドの処理
-async fn handle_generate(agent_filter: Option<String>) -> Result<()> {
-    println!("コンテキストファイルを生成します: {}", CONFIG_FILE);
+async fn handle_generate(agent_filter: Option<String>, config_path: Option<String>) -> Result<()> {
+    let config_file = config_path.as_deref().unwrap_or(CONFIG_FILE);
+    println!("コンテキストファイルを生成します: {}", config_file);
 
     // 設定ファイルを読み込み
-    let config = load_config().await?;
+    let config = load_config_from_path(config_file).await?;
 
     // 有効なエージェントを取得
     let enabled_agents = get_enabled_agents(&config, agent_filter);
@@ -107,54 +131,51 @@ async fn handle_generate(agent_filter: Option<String>) -> Result<()> {
 }
 
 /// validate コマンドの処理
-async fn handle_validate() -> Result<()> {
-    println!("設定ファイルを検証します: {}", CONFIG_FILE);
+async fn handle_validate(config_path: Option<String>) -> Result<()> {
+    let config_file = config_path.as_deref().unwrap_or(CONFIG_FILE);
+    println!("設定ファイルを検証します: {}", config_file);
 
-    match load_config().await {
-        Ok(config) => {
-            println!("✅ 設定ファイルは有効です");
+    let config = load_config_from_path(config_file)
+        .await
+        .map_err(anyhow::Error::from)?;
 
-            // 基本情報を表示
-            println!("  バージョン: {}", config.version);
-            println!("  出力モード: {:?}", config.output_mode);
-            println!("  ドキュメントディレクトリ: {}", config.base_docs_dir);
+    println!("✅ 設定ファイルは有効です");
 
-            // 有効なエージェントを表示
-            let enabled = config.enabled_agents();
-            if enabled.is_empty() {
-                println!("  有効なエージェント: なし");
-            } else {
-                println!("  有効なエージェント: {}", enabled.join(", "));
-            }
+    // 基本情報を表示
+    println!("  バージョン: {}", config.version);
+    println!("  出力モード: {:?}", config.output_mode);
+    println!("  ドキュメントディレクトリ: {}", config.base_docs_dir);
 
-            // ドキュメントディレクトリの存在確認
-            if Path::new(&config.base_docs_dir).exists() {
-                println!("  ドキュメントディレクトリ: 存在します");
-            } else {
-                println!(
-                    "  ⚠️  ドキュメントディレクトリが存在しません: {}",
-                    config.base_docs_dir
-                );
-            }
-        }
-        Err(e) => {
-            println!("❌ 設定ファイルの検証でエラーが発生しました: {}", e);
-            std::process::exit(1);
-        }
+    // 有効なエージェントを表示
+    let enabled = config.enabled_agents();
+    if enabled.is_empty() {
+        println!("  有効なエージェント: なし");
+    } else {
+        println!("  有効なエージェント: {}", enabled.join(", "));
+    }
+
+    // ドキュメントディレクトリの存在確認
+    if Path::new(&config.base_docs_dir).exists() {
+        println!("  ドキュメントディレクトリ: 存在します");
+    } else {
+        println!(
+            "  ⚠️  ドキュメントディレクトリが存在しません: {}",
+            config.base_docs_dir
+        );
     }
 
     Ok(())
 }
 
-/// 設定ファイルを読み込み
-async fn load_config() -> Result<AIContextConfig, ConfigError> {
-    if !Path::new(CONFIG_FILE).exists() {
+/// 指定されたパスから設定ファイルを読み込み
+async fn load_config_from_path(config_path: &str) -> Result<AIContextConfig, ConfigError> {
+    if !Path::new(config_path).exists() {
         return Err(ConfigError::FileNotFound {
-            path: CONFIG_FILE.to_string(),
+            path: config_path.to_string(),
         });
     }
 
-    ConfigLoader::load(CONFIG_FILE).await
+    ConfigLoader::load(config_path).await
 }
 
 /// ドキュメントディレクトリを作成
@@ -285,6 +306,9 @@ async fn write_generated_file(file: &GeneratedFile) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aicm::types::AgentConfigTrait;
+    use tempfile::tempdir;
+    use tokio::fs;
 
     #[test]
     fn test_create_readme_content() {
@@ -320,5 +344,130 @@ mod tests {
         let config = AIContextConfig::default();
         let agents = get_enabled_agents(&config, None);
         assert!(agents.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_load_config_from_path_valid() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("custom-config.yaml");
+
+        let test_config_content = r#"
+version: "1.0"
+output_mode: split
+base_docs_dir: "./custom-docs"
+agents:
+  cursor: true
+  claude: true
+"#;
+
+        fs::write(&config_path, test_config_content).await.unwrap();
+
+        let config = load_config_from_path(&config_path.to_string_lossy())
+            .await
+            .unwrap();
+        assert_eq!(config.version, "1.0");
+        assert_eq!(config.base_docs_dir, "./custom-docs");
+        assert!(config.agents.cursor.is_enabled());
+        assert!(config.agents.claude.is_enabled());
+    }
+
+    #[tokio::test]
+    async fn test_load_config_from_path_not_found() {
+        let result = load_config_from_path("/nonexistent/config.yaml").await;
+        assert!(result.is_err());
+
+        if let Err(ConfigError::FileNotFound { path }) = result {
+            assert_eq!(path, "/nonexistent/config.yaml");
+        } else {
+            panic!("Expected FileNotFound error");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_load_config_from_path_invalid_yaml() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("invalid.yaml");
+
+        let invalid_yaml = r#"
+version: 1.0
+invalid_yaml: [
+"#;
+
+        fs::write(&config_path, invalid_yaml).await.unwrap();
+
+        let result = load_config_from_path(&config_path.to_string_lossy()).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ConfigError::YamlError { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_load_config_from_path_with_default_file() {
+        // デフォルトファイルパスでのテスト
+        let result = load_config_from_path(CONFIG_FILE).await;
+
+        // デフォルトファイルが存在する場合は成功、存在しない場合はFileNotFoundエラー
+        match result {
+            Ok(config) => {
+                // ファイルが存在する場合は正常に読み込まれることを確認
+                assert!(!config.version.is_empty());
+                assert!(!config.base_docs_dir.is_empty());
+            }
+            Err(ConfigError::FileNotFound { path }) => {
+                // ファイルが存在しない場合はFileNotFoundエラーが返される
+                assert_eq!(path, CONFIG_FILE);
+            }
+            Err(e) => {
+                panic!("Unexpected error type: {:?}", e);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_handle_validate_with_custom_config() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("validate-test-config.yaml");
+
+        let test_config_content = r#"
+version: "1.0"
+output_mode: split
+base_docs_dir: "./validate-docs"
+agents:
+  cursor: true
+  claude: true
+"#;
+
+        fs::write(&config_path, test_config_content).await.unwrap();
+
+        // handle_validate関数が正常に動作することを確認
+        // 実際の出力はテストでは確認できないが、エラーが発生しないことを確認
+        let result = handle_validate(Some(config_path.to_string_lossy().to_string())).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_validate_with_nonexistent_config() {
+        // 存在しないファイルでvalidateを実行した場合の動作確認
+        let result = handle_validate(Some("/nonexistent/config.yaml".to_string())).await;
+        assert!(result.is_err());
+
+        let error_message = result.unwrap_err().to_string();
+        assert!(error_message.contains("設定ファイルが見つかりません"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_validate_default_config() {
+        // デフォルト設定でのvalidateテスト
+        let result = handle_validate(None).await;
+
+        // デフォルトファイルが存在する場合は成功、存在しない場合はエラー
+        match result {
+            Ok(_) => {
+                // ファイルが存在する場合は正常に処理される
+            }
+            Err(e) => {
+                // ファイルが存在しない場合はエラーが返される
+                assert!(e.to_string().contains("設定ファイルが見つかりません"));
+            }
+        }
     }
 }
