@@ -16,12 +16,24 @@ use tokio::fs;
 /// Cline エージェント
 pub struct ClineAgent {
     config: AIContextConfig,
+    base_dir: Option<String>,
 }
 
 impl ClineAgent {
     /// 新しい Cline エージェントを作成
     pub fn new(config: AIContextConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            base_dir: None,
+        }
+    }
+
+    /// テスト用：base_dirを指定してClineエージェントを作成
+    pub fn new_with_base_dir(config: AIContextConfig, base_dir: String) -> Self {
+        Self {
+            config,
+            base_dir: Some(base_dir),
+        }
     }
 
     /// Cline 用ファイルを生成
@@ -77,12 +89,20 @@ impl ClineAgent {
 
     /// Merged モードの出力パスを取得
     fn get_merged_output_path(&self) -> String {
-        ".clinerules".to_string() // 拡張子なし
+        if let Some(base_dir) = &self.base_dir {
+            format!("{}/.clinerules", base_dir)
+        } else {
+            ".clinerules".to_string() // 拡張子なし
+        }
     }
 
     /// Split モードのルールディレクトリのパスを取得
     fn get_split_rules_dir(&self) -> String {
-        ".clinerules".to_string() // フォルダ
+        if let Some(base_dir) = &self.base_dir {
+            format!("{}/.clinerules", base_dir)
+        } else {
+            ".clinerules".to_string() // フォルダ
+        }
     }
 
     /// .clinerules/ ディレクトリを準備（既存ファイルを削除）
@@ -130,11 +150,13 @@ mod tests {
     async fn test_generate_merged_empty() {
         let temp_dir = tempdir().unwrap();
         let config = create_test_config(&temp_dir.path().to_string_lossy(), OutputMode::Merged);
-        let agent = ClineAgent::new(config);
+        let agent =
+            ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
-        assert_eq!(files[0].path, ".clinerules"); // 拡張子なし
+        let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
+        assert_eq!(files[0].path, expected_path); // 拡張子なし
     }
 
     #[tokio::test]
@@ -148,11 +170,13 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Merged);
-        let agent = ClineAgent::new(config);
+        let agent =
+            ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
-        assert_eq!(files[0].path, ".clinerules");
+        let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
+        assert_eq!(files[0].path, expected_path);
 
         // ファイル名のヘッダーが含まれることを確認
         assert!(files[0].content.contains("# test.md"));
@@ -175,15 +199,18 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
-        let agent = ClineAgent::new(config);
+        let agent =
+            ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 2);
 
         // ファイル名とパスをチェック
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
-        assert!(paths.contains(&&".clinerules/file1.md".to_string()));
-        assert!(paths.contains(&&".clinerules/file2.md".to_string()));
+        let expected_path1 = format!("{}/.clinerules/file1.md", temp_dir.path().to_string_lossy());
+        let expected_path2 = format!("{}/.clinerules/file2.md", temp_dir.path().to_string_lossy());
+        assert!(paths.contains(&&expected_path1));
+        assert!(paths.contains(&&expected_path2));
 
         // 内容をチェック
         for file in &files {
@@ -208,32 +235,43 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
-        let agent = ClineAgent::new(config);
+        let agent =
+            ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
 
         // パス区切り文字がアンダースコアに変換されていることを確認
-        assert_eq!(files[0].path, ".clinerules/subdir_nested.md");
+        let expected_path = format!(
+            "{}/.clinerules/subdir_nested.md",
+            temp_dir.path().to_string_lossy()
+        );
+        assert_eq!(files[0].path, expected_path);
         assert!(files[0].content.contains("Nested content"));
     }
 
     #[tokio::test]
     async fn test_get_merged_output_path() {
+        let temp_dir = tempdir().unwrap();
         let config = create_test_config("./docs", OutputMode::Merged);
-        let agent = ClineAgent::new(config);
+        let agent =
+            ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let output_path = agent.get_merged_output_path();
-        assert_eq!(output_path, ".clinerules"); // 拡張子なし
+        let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
+        assert_eq!(output_path, expected_path); // 拡張子なし
     }
 
     #[tokio::test]
     async fn test_get_split_rules_dir() {
+        let temp_dir = tempdir().unwrap();
         let config = create_test_config("./docs", OutputMode::Split);
-        let agent = ClineAgent::new(config);
+        let agent =
+            ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let rules_dir = agent.get_split_rules_dir();
-        assert_eq!(rules_dir, ".clinerules"); // フォルダ
+        let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
+        assert_eq!(rules_dir, expected_path); // フォルダ
     }
 
     #[tokio::test]
@@ -241,7 +279,8 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let rules_dir = temp_dir.path().join(".clinerules");
         let config = create_test_config("./docs", OutputMode::Split);
-        let agent = ClineAgent::new(config);
+        let agent =
+            ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         // ディレクトリを作成
         fs::create_dir_all(&rules_dir).await.unwrap();
@@ -284,7 +323,8 @@ mod tests {
             .unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
-        let agent = ClineAgent::new(config);
+        let agent =
+            ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 3);
