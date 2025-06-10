@@ -39,7 +39,11 @@ enum Commands {
         config: Option<String>,
     },
     /// 設定ファイルを検証
-    Validate,
+    Validate {
+        /// 設定ファイルのパス
+        #[arg(short, long)]
+        config: Option<String>,
+    },
 }
 
 const CONFIG_FILE: &str = "ai-context.yaml";
@@ -51,7 +55,7 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::Init => handle_init().await,
         Commands::Generate { agent, config } => handle_generate(agent, config).await,
-        Commands::Validate => handle_validate().await,
+        Commands::Validate { config } => handle_validate(config).await,
     }
 }
 
@@ -111,10 +115,11 @@ async fn handle_generate(agent_filter: Option<String>, config_path: Option<Strin
 }
 
 /// validate コマンドの処理
-async fn handle_validate() -> Result<()> {
-    println!("設定ファイルを検証します: {}", CONFIG_FILE);
+async fn handle_validate(config_path: Option<String>) -> Result<()> {
+    let config_file = config_path.as_deref().unwrap_or(CONFIG_FILE);
+    println!("設定ファイルを検証します: {}", config_file);
 
-    match load_config().await {
+    match load_config_from_path(config_file).await {
         Ok(config) => {
             println!("✅ 設定ファイルは有効です");
 
@@ -143,16 +148,19 @@ async fn handle_validate() -> Result<()> {
         }
         Err(e) => {
             println!("❌ 設定ファイルの検証でエラーが発生しました: {}", e);
-            std::process::exit(1);
+            // テスト環境では exit を呼ばずに Result::Err を返す
+            if cfg!(test) {
+                return Err(anyhow::anyhow!(
+                    "設定ファイルの検証でエラーが発生しました: {}",
+                    e
+                ));
+            } else {
+                std::process::exit(1);
+            }
         }
     }
 
     Ok(())
-}
-
-/// 設定ファイルを読み込み（デフォルトパス）
-async fn load_config() -> Result<AIContextConfig, ConfigError> {
-    load_config_from_path(CONFIG_FILE).await
 }
 
 /// 指定されたパスから設定ファイルを読み込み
@@ -389,9 +397,9 @@ invalid_yaml: [
     }
 
     #[tokio::test]
-    async fn test_load_config_default_fallback() {
-        // デフォルトのload_config関数がload_config_from_pathを使用することを確認
-        let result = load_config().await;
+    async fn test_load_config_from_path_with_default_file() {
+        // デフォルトファイルパスでのテスト
+        let result = load_config_from_path(CONFIG_FILE).await;
 
         // デフォルトファイルが存在する場合は成功、存在しない場合はFileNotFoundエラー
         match result {
@@ -406,6 +414,58 @@ invalid_yaml: [
             }
             Err(e) => {
                 panic!("Unexpected error type: {:?}", e);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_handle_validate_with_custom_config() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("validate-test-config.yaml");
+
+        let test_config_content = r#"
+version: "1.0"
+output_mode: split
+base_docs_dir: "./validate-docs"
+agents:
+  cursor: true
+  claude: true
+"#;
+
+        fs::write(&config_path, test_config_content).await.unwrap();
+
+        // handle_validate関数が正常に動作することを確認
+        // 実際の出力はテストでは確認できないが、エラーが発生しないことを確認
+        let result = handle_validate(Some(config_path.to_string_lossy().to_string())).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_validate_with_nonexistent_config() {
+        // 存在しないファイルでvalidateを実行した場合の動作確認
+        // テスト環境では exit を呼ばずに Result::Err を返す
+        let result = handle_validate(Some("/nonexistent/config.yaml".to_string())).await;
+        assert!(result.is_err());
+
+        let error_message = result.unwrap_err().to_string();
+        assert!(error_message.contains("設定ファイルの検証でエラーが発生しました"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_validate_default_config() {
+        // デフォルト設定でのvalidateテスト
+        let result = handle_validate(None).await;
+
+        // デフォルトファイルが存在する場合は成功、存在しない場合はエラー
+        match result {
+            Ok(_) => {
+                // ファイルが存在する場合は正常に処理される
+            }
+            Err(e) => {
+                // ファイルが存在しない場合はエラーが返される（テスト環境では exit しない）
+                assert!(e
+                    .to_string()
+                    .contains("設定ファイルの検証でエラーが発生しました"));
             }
         }
     }
