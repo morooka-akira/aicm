@@ -392,7 +392,7 @@ invalid_yaml: [
     async fn test_load_config_default_fallback() {
         // デフォルトのload_config関数がload_config_from_pathを使用することを確認
         let result = load_config().await;
-        
+
         // デフォルトファイルが存在する場合は成功、存在しない場合はFileNotFoundエラー
         match result {
             Ok(config) => {
