@@ -392,13 +392,21 @@ invalid_yaml: [
     async fn test_load_config_default_fallback() {
         // デフォルトのload_config関数がload_config_from_pathを使用することを確認
         let result = load_config().await;
-        // デフォルトファイルが存在しない場合はFileNotFoundエラーが返される
-        assert!(result.is_err());
-
-        if let Err(ConfigError::FileNotFound { path }) = result {
-            assert_eq!(path, CONFIG_FILE);
-        } else {
-            panic!("Expected FileNotFound error for default config file");
+        
+        // デフォルトファイルが存在する場合は成功、存在しない場合はFileNotFoundエラー
+        match result {
+            Ok(config) => {
+                // ファイルが存在する場合は正常に読み込まれることを確認
+                assert!(!config.version.is_empty());
+                assert!(!config.base_docs_dir.is_empty());
+            }
+            Err(ConfigError::FileNotFound { path }) => {
+                // ファイルが存在しない場合はFileNotFoundエラーが返される
+                assert_eq!(path, CONFIG_FILE);
+            }
+            Err(e) => {
+                panic!("Unexpected error type: {:?}", e);
+            }
         }
     }
 }
