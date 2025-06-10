@@ -32,7 +32,7 @@ impl CursorAgent {
 
     /// 統合モード：1つのファイルに結合
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
-        let content = merger.merge_all().await?;
+        let content = merger.merge_all_with_options(Some("cursor")).await?;
         let mdc_content = self.create_mdc_content(&content);
 
         // .cursor/rules/ ディレクトリを作成し、既存ファイルを削除
@@ -253,6 +253,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(output_mode),
+            include_filenames: None,
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
@@ -504,6 +505,7 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
@@ -541,6 +543,7 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
@@ -577,6 +580,7 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
@@ -613,6 +617,7 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
@@ -651,6 +656,7 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
@@ -691,6 +697,7 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
@@ -751,6 +758,7 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
@@ -788,6 +796,7 @@ mod tests {
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(CursorSplitConfig {
                 rules: vec![

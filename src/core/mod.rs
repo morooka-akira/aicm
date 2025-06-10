@@ -6,4 +6,7 @@
 
 pub mod markdown_merger;
 
+#[cfg(test)]
+mod markdown_merger_test;
+
 pub use markdown_merger::*;

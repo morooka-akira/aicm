@@ -14,6 +14,9 @@ pub struct AIContextConfig {
     /// 出力モード: 統合 or 分割（オプショナル、デフォルト：merged）
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
+    /// merged モード時にファイル名ヘッダーを含めるか（デフォルト：false）
+    #[serde(default)]
+    pub include_filenames: Option<bool>,
     /// ベースとなるドキュメントディレクトリ
     pub base_docs_dir: String,
     /// エージェント有効/無効設定
@@ -109,6 +112,9 @@ pub struct CursorAgentConfig {
     /// 出力モード（オプショナル、グローバル設定を上書き）
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
+    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    #[serde(default)]
+    pub include_filenames: Option<bool>,
     /// splitモード時の詳細設定（オプショナル）
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub split_config: Option<CursorSplitConfig>,
@@ -168,6 +174,9 @@ pub struct ClineAgentConfig {
     /// 出力モード（オプショナル、グローバル設定を上書き）
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
+    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    #[serde(default)]
+    pub include_filenames: Option<bool>,
 }
 
 /// GitHub エージェント詳細設定
@@ -179,6 +188,9 @@ pub struct GitHubAgentConfig {
     /// 出力モード（オプショナル、グローバル設定を上書き）
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
+    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    #[serde(default)]
+    pub include_filenames: Option<bool>,
     /// splitモード時の詳細設定（オプショナル）
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub split_config: Option<GitHubSplitConfig>,
@@ -193,6 +205,9 @@ pub struct ClaudeAgentConfig {
     /// 出力モード（オプショナル、Claude は常に merged）
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
+    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    #[serde(default)]
+    pub include_filenames: Option<bool>,
 }
 
 /// Codex エージェント詳細設定
@@ -204,6 +219,9 @@ pub struct CodexAgentConfig {
     /// 出力モード（オプショナル、Codex は常に merged）
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
+    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    #[serde(default)]
+    pub include_filenames: Option<bool>,
 }
 
 /// デフォルト値: true
@@ -246,7 +264,8 @@ impl Default for AIContextConfig {
     fn default() -> Self {
         Self {
             version: "1.0".to_string(),
-            output_mode: None, // デフォルトは None（merged として扱われる）
+            output_mode: None,       // デフォルトは None（merged として扱われる）
+            include_filenames: None, // デフォルトは None（false として扱われる）
             base_docs_dir: "./docs".to_string(),
             agents: AgentConfig::default(),
         }
@@ -304,6 +323,39 @@ impl AIContextConfig {
             _ => self.get_global_output_mode(),
         }
     }
+
+    /// 指定されたエージェントの有効な include_filenames 設定を取得
+    /// 優先順位: エージェント個別設定 > グローバル設定 > デフォルト（false）
+    pub fn get_effective_include_filenames(&self, agent: &str) -> bool {
+        match agent {
+            "cursor" => self
+                .agents
+                .cursor
+                .get_include_filenames()
+                .unwrap_or_else(|| self.include_filenames.unwrap_or(false)),
+            "cline" => self
+                .agents
+                .cline
+                .get_include_filenames()
+                .unwrap_or_else(|| self.include_filenames.unwrap_or(false)),
+            "github" => self
+                .agents
+                .github
+                .get_include_filenames()
+                .unwrap_or_else(|| self.include_filenames.unwrap_or(false)),
+            "claude" => self
+                .agents
+                .claude
+                .get_include_filenames()
+                .unwrap_or_else(|| self.include_filenames.unwrap_or(false)),
+            "codex" => self
+                .agents
+                .codex
+                .get_include_filenames()
+                .unwrap_or_else(|| self.include_filenames.unwrap_or(false)),
+            _ => self.include_filenames.unwrap_or(false),
+        }
+    }
 }
 
 /// エージェント設定の共通トレイト
@@ -312,6 +364,8 @@ pub trait AgentConfigTrait {
     fn is_enabled(&self) -> bool;
     /// エージェント個別の出力モードを取得
     fn get_output_mode(&self) -> Option<OutputMode>;
+    /// エージェント個別の include_filenames 設定を取得
+    fn get_include_filenames(&self) -> Option<bool>;
 }
 
 impl AgentConfigTrait for CursorConfig {
@@ -326,6 +380,13 @@ impl AgentConfigTrait for CursorConfig {
         match self {
             Self::Simple(_) => None,
             Self::Advanced(config) => config.output_mode.clone(),
+        }
+    }
+
+    fn get_include_filenames(&self) -> Option<bool> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.include_filenames,
         }
     }
 }
@@ -344,6 +405,13 @@ impl AgentConfigTrait for ClineConfig {
             Self::Advanced(config) => config.output_mode.clone(),
         }
     }
+
+    fn get_include_filenames(&self) -> Option<bool> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.include_filenames,
+        }
+    }
 }
 
 impl AgentConfigTrait for GitHubConfig {
@@ -358,6 +426,13 @@ impl AgentConfigTrait for GitHubConfig {
         match self {
             Self::Simple(_) => None,
             Self::Advanced(config) => config.output_mode.clone(),
+        }
+    }
+
+    fn get_include_filenames(&self) -> Option<bool> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.include_filenames,
         }
     }
 }
@@ -386,6 +461,13 @@ impl AgentConfigTrait for ClaudeConfig {
             Self::Advanced(config) => config.output_mode.clone(),
         }
     }
+
+    fn get_include_filenames(&self) -> Option<bool> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.include_filenames,
+        }
+    }
 }
 
 impl AgentConfigTrait for CodexConfig {
@@ -400,6 +482,13 @@ impl AgentConfigTrait for CodexConfig {
         match self {
             Self::Simple(_) => None,
             Self::Advanced(config) => config.output_mode.clone(),
+        }
+    }
+
+    fn get_include_filenames(&self) -> Option<bool> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.include_filenames,
         }
     }
 }
@@ -447,12 +536,14 @@ mod tests {
         let mut config = AIContextConfig::default();
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: None,
         });
         config.agents.cline = ClineConfig::Advanced(ClineAgentConfig {
             enabled: false,
             output_mode: Some(OutputMode::Merged),
+            include_filenames: None,
         });
 
         let enabled = config.enabled_agents();
@@ -495,6 +586,7 @@ mod tests {
         };
         config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Merged),
             split_config: None,
         });
@@ -514,6 +606,7 @@ mod tests {
         };
         config.agents.claude = ClaudeConfig::Advanced(ClaudeAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split), // 設定されていても無視される
         });
 
@@ -532,6 +625,7 @@ mod tests {
         };
         config.agents.codex = CodexConfig::Advanced(CodexAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split), // 設定されていても無視される
         });
 
@@ -583,6 +677,7 @@ mod tests {
     fn test_advanced_agent_config_serialization() {
         let cursor_config = CursorConfig::Advanced(CursorAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: None,
         });

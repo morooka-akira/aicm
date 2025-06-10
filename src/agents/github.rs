@@ -37,7 +37,7 @@ impl GitHubAgent {
 
     /// 統合モード：.github/copilot-instructions.md ファイルを生成
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
-        let content = merger.merge_all().await?;
+        let content = merger.merge_all_with_options(Some("github")).await?;
 
         // GitHub Copilotは通常のMarkdownファイル（フロントマターなし）
         let instructions_content = self.create_instructions_content(&content);
@@ -250,6 +250,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(output_mode),
+            include_filenames: None,
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
@@ -473,6 +474,7 @@ mod tests {
         use crate::types::{GitHubAgentConfig, GitHubConfig, GitHubSplitConfig};
         let github_config = GitHubConfig::Advanced(GitHubAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(GitHubSplitConfig {
                 rules: vec![
@@ -597,6 +599,7 @@ mod tests {
         use crate::types::{GitHubAgentConfig, GitHubConfig, GitHubSplitConfig};
         let github_config = GitHubConfig::Advanced(GitHubAgentConfig {
             enabled: true,
+            include_filenames: None,
             output_mode: Some(OutputMode::Split),
             split_config: Some(GitHubSplitConfig {
                 rules: vec![

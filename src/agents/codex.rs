@@ -28,7 +28,7 @@ impl CodexAgent {
 
     /// 統合モード：1つのファイルに結合して AGENTS.md として出力
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
-        let content = merger.merge_all().await?;
+        let content = merger.merge_all_with_options(Some("codex")).await?;
         let output_path = self.get_output_path();
 
         Ok(vec![GeneratedFile::new(output_path, content)])
@@ -51,6 +51,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(OutputMode::Merged), // Codex は merged のみ
+            include_filenames: None,
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }

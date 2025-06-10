@@ -36,7 +36,7 @@ impl ClineAgent {
 
     /// Merged モード：.clinerules 単一ファイル（拡張子なし）
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
-        let content = merger.merge_all().await?;
+        let content = merger.merge_all_with_options(Some("cline")).await?;
         let output_path = self.get_merged_output_path();
 
         // 既存の .clinerules ディレクトリ（split モード用）が存在する場合は削除
@@ -120,6 +120,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(output_mode),
+            include_filenames: None,
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
