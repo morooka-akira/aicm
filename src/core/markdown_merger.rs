@@ -20,7 +20,7 @@ impl MarkdownMerger {
         Self { config }
     }
 
-    /// docs配下の全Markdownファイルを結合
+    /// docs配下の全Markdownファイルを結合（下位互換性のためファイル名ヘッダーを含む）
     pub async fn merge_all(&self) -> Result<String> {
         let docs_dir = Path::new(&self.config.base_docs_dir);
 
@@ -32,6 +32,7 @@ impl MarkdownMerger {
         let markdown_files = self.find_markdown_files(docs_dir).await?;
         let mut merged_content = String::new();
 
+        // 下位互換性のため、常にファイル名ヘッダーを含む
         for file_path in markdown_files {
             if let Ok(content) = fs::read_to_string(&file_path).await {
                 // ファイル名をヘッダーとして追加
@@ -41,6 +42,49 @@ impl MarkdownMerger {
                     .to_string_lossy();
 
                 merged_content.push_str(&format!("# {}\n\n{}\n\n", relative_path, content.trim()));
+            }
+        }
+
+        Ok(merged_content.trim().to_string())
+    }
+
+    /// docs配下の全Markdownファイルを結合（エージェント名指定版）
+    pub async fn merge_all_with_options(&self, agent: Option<&str>) -> Result<String> {
+        let docs_dir = Path::new(&self.config.base_docs_dir);
+
+        // ディレクトリが存在しない場合は空文字を返す
+        if !docs_dir.exists() {
+            return Ok(String::new());
+        }
+
+        let markdown_files = self.find_markdown_files(docs_dir).await?;
+        let mut merged_content = String::new();
+
+        // include_filenames 設定を取得
+        let include_filenames = if let Some(agent_name) = agent {
+            self.config.get_effective_include_filenames(agent_name)
+        } else {
+            self.config.include_filenames.unwrap_or(false)
+        };
+
+        for file_path in markdown_files {
+            if let Ok(content) = fs::read_to_string(&file_path).await {
+                if include_filenames {
+                    // ファイル名をヘッダーとして追加
+                    let relative_path = file_path
+                        .strip_prefix(&self.config.base_docs_dir)
+                        .unwrap_or(&file_path)
+                        .to_string_lossy();
+
+                    merged_content.push_str(&format!(
+                        "# {}\n\n{}\n\n",
+                        relative_path,
+                        content.trim()
+                    ));
+                } else {
+                    // ファイル名ヘッダーなしでコンテンツのみ追加
+                    merged_content.push_str(&format!("{}\n\n", content.trim()));
+                }
             }
         }
 
@@ -114,6 +158,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(OutputMode::Merged),
+            include_filenames: None,
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }

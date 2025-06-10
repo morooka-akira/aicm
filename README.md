@@ -65,7 +65,8 @@ aicm validate
 ```yaml
 # ai-context.yaml
 version: "1.0"
-output_mode: split  # merged | split
+output_mode: split         # merged | split
+include_filenames: false   # merged モード時にファイル名ヘッダーを含めるか（デフォルト: false）
 base_docs_dir: ./ai-context
 
 # エージェント設定
@@ -84,14 +85,16 @@ agents:
 # ai-context.yaml
 version: "1.0" 
 output_mode: split
+include_filenames: false   # グローバル設定（デフォルト: false）
 base_docs_dir: ./ai-context
 
 agents:
   # 詳細設定
   cursor:
     enabled: true
-    output_mode: split  # エージェント個別の出力モード
-    split_config:       # Cursor split_config機能
+    output_mode: split        # エージェント個別の出力モード
+    include_filenames: true   # エージェント個別のファイル名ヘッダー設定
+    split_config:             # Cursor split_config機能
       rules:
         - file_patterns: ["*project*", "*overview*"]
           alwaysApply: true
@@ -105,11 +108,12 @@ agents:
   cline:
     enabled: true
     output_mode: merged
+    include_filenames: false  # Clineではファイル名ヘッダーを無効化
 
   github:
     enabled: true
     output_mode: split
-    split_config:       # GitHub applyTo オプション対応
+    split_config:             # GitHub applyTo オプション対応
       rules:
         - file_patterns: ["*architecture*", "*design*"]
           apply_to: ["**/*.rs", "**/*.toml"]
@@ -118,11 +122,57 @@ agents:
 
   claude:
     enabled: true
+    include_filenames: true   # Claudeではファイル名ヘッダーを有効化
     # Claude は常に merged モード
 
   codex:
     enabled: false
     # Codex は常に merged モード
+```
+
+### include_filenames オプション
+
+`include_filenames` オプションは、merged モード時にファイル名ヘッダー（`# filename.md`）を含めるかどうかを制御します。
+
+#### 設定階層
+
+設定は以下の優先順位で適用されます：
+1. **エージェント個別設定** > **グローバル設定** > **デフォルト（false）**
+
+```yaml
+# グローバル設定
+include_filenames: true   # すべてのエージェントのデフォルト
+
+agents:
+  claude:
+    include_filenames: false  # Claudeのみオーバーライド（グローバル設定より優先）
+  
+  cursor:
+    # include_filenamesの指定なし → グローバル設定（true）を継承
+```
+
+#### 動作例
+
+**include_filenames: true の場合**
+```markdown
+# 01_project-overview.md
+
+# プロジェクト概要
+このプロジェクトは...
+
+# 02_architecture.md
+
+# アーキテクチャ
+システム設計について...
+```
+
+**include_filenames: false の場合**
+```markdown
+# プロジェクト概要
+このプロジェクトは...
+
+# アーキテクチャ
+システム設計について...
 ```
 
 ### Cursor split_config詳細
@@ -333,12 +383,14 @@ AGENTS.md                     # 常に merged モード
 ```yaml
 version: "1.0"
 output_mode: split
+include_filenames: false    # デフォルトではファイル名ヘッダーを含めない
 base_docs_dir: ./ai-context
 
 agents:
   cursor:
     enabled: true
     output_mode: split
+    include_filenames: true  # Cursorではファイル名ヘッダーを有効化
     split_config:
       rules:
         # プロジェクト概要は常に適用
@@ -360,12 +412,14 @@ agents:
   cline:
     enabled: true
     output_mode: merged
+    include_filenames: false  # Clineではファイル名ヘッダーを無効化
 
   github:
     enabled: true
     output_mode: split
+    # include_filenamesの指定なし → グローバル設定（false）を継承
 
-  claude: true  # シンプル設定（デフォルト有効）
+  claude: true  # シンプル設定（デフォルト有効、グローバル設定を継承）
   
   codex: false  # シンプル設定（デフォルト無効）
 ```

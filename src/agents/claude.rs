@@ -28,7 +28,7 @@ impl ClaudeAgent {
 
     /// 統合モード：1つのファイルに結合して CLAUDE.md として出力
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
-        let content = merger.merge_all().await?;
+        let content = merger.merge_all_with_options(Some("claude")).await?;
         let output_path = self.get_output_path();
 
         Ok(vec![GeneratedFile::new(output_path, content)])
@@ -51,6 +51,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(OutputMode::Merged), // Claude は merged のみ
+            include_filenames: Some(true),         // テスト用にヘッダーを有効化
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
