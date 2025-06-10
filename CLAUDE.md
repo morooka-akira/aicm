@@ -1,5 +1,3 @@
-# 01_project-overview.md
-
 # プロジェクト概要
 
 このファイルは、このリポジトリでコードを扱う際に Claude Code (claude.ai/code)、Cline, Corsor, Github Copilot、Codex など各種 AI コードエージェント にガイダンスを提供します。
@@ -27,8 +25,6 @@
 
 詳細な設計概要は `docs/concept.md` を参照してください。
 
-# 02_security.md
-
 # セキュリティ 🔒
 
 ## 機密ファイル
@@ -45,8 +41,6 @@
 - 機密ファイルをコミットしない
 - シークレットには環境変数を使用
 - 認証情報をログや出力に含めない
-
-# 03_architecture.md
 
 # アーキテクチャノート
 
@@ -117,8 +111,6 @@ Cargo.lock                 # 依存関係ロック
 - **並列処理**: 非同期 I/O による高速ファイル処理
 - **ゼロコピー**: 不要な文字列コピーの回避
 
-# 04_dependencies.md
-
 # 依存関係
 
 ## 主要なクレート
@@ -135,8 +127,6 @@ Cargo.lock                 # 依存関係ロック
 
 - **tokio-test**: 非同期テスト
 - **tempfile**: テスト用一時ファイル
-
-# 05_development-rules.md
 
 # 開発ルール
 
@@ -186,8 +176,6 @@ cargo test --test integration_test
 - 作業開始時に、`ai-works` ディレクトリに `yyyy-mm-dd-<work name>.md` を作成し、作業内容、要件をまとめてください
 - 指示された場合は、一度作業内容を指示者に確認してもらってから作業を進めてください
 
-# 06_development-setup.md
-
 # 開発環境セットアップ
 
 ## 必要な環境
@@ -224,8 +212,6 @@ cargo clippy  # リント実行
 # ドキュメント生成
 cargo doc --open
 ```
-
-# 07_references.md
 
 # 参考リンク
 
