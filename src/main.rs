@@ -27,7 +27,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// プロジェクトを初期化（設定ファイルとドキュメントディレクトリを作成）
+    /// プロジェクトを初期化（設定ファイルのテンプレートを作成）
     Init,
     /// AI用設定ファイルを生成
     Generate {
@@ -84,11 +84,8 @@ async fn handle_init() -> Result<()> {
         println!("⚠️  {}は既に存在します", CONFIG_FILE);
     } else {
         // デフォルト設定ファイルを作成
-        let config = ConfigLoader::create_default(CONFIG_FILE).await?;
+        ConfigLoader::create_default(CONFIG_FILE).await?;
         println!("✅ {}を作成しました", CONFIG_FILE);
-
-        // ドキュメントディレクトリを作成
-        create_docs_directory(&config).await?;
     }
 
     Ok(())
@@ -187,71 +184,6 @@ async fn load_config_from_path(config_path: &str) -> Result<AIContextConfig, Con
     ConfigLoader::load(config_path).await
 }
 
-/// ドキュメントディレクトリを作成
-async fn create_docs_directory(config: &AIContextConfig) -> Result<()> {
-    let docs_dir = Path::new(&config.base_docs_dir);
-
-    if docs_dir.exists() {
-        println!(
-            "⚠️  ドキュメントディレクトリは既に存在します: {}",
-            config.base_docs_dir
-        );
-    } else {
-        fs::create_dir_all(docs_dir).await?;
-        println!(
-            "✅ ドキュメントディレクトリを作成しました: {}",
-            config.base_docs_dir
-        );
-
-        // README.mdを作成
-        let readme_content = create_readme_content();
-        let readme_path = docs_dir.join("README.md");
-        fs::write(readme_path, readme_content).await?;
-        println!("📄 {}/README.md", config.base_docs_dir);
-    }
-
-    Ok(())
-}
-
-/// README.mdの内容を作成
-fn create_readme_content() -> &'static str {
-    r#"# AI Context Management - ドキュメント
-
-このディレクトリに Markdown ファイルを配置してください。
-
-## 使い方
-
-1. **任意の .md ファイルを作成**
-   - ファイル名は自由に設定できます
-   - サブディレクトリも使用可能です
-
-2. **コンテンツを記述**
-   - プロジェクトのルール
-   - コーディング規約
-   - アーキテクチャ情報
-   - など
-
-3. **ファイルを生成**
-   ```bash
-   aicm generate
-   ```
-
-## ファイル例
-
-```
-docs/
-├── README.md
-├── coding-rules.md
-├── project-info.md
-└── architecture/
-    ├── overview.md
-    └── patterns.md
-```
-
-全ての .md ファイルが自動的に検出され、AI ツール用の設定ファイルに統合されます。
-"#
-}
-
 /// 有効なエージェントのリストを取得
 fn get_enabled_agents(config: &AIContextConfig, filter: Option<String>) -> Vec<String> {
     let all_enabled = config.enabled_agents();
@@ -318,14 +250,6 @@ mod tests {
     use aicm::types::AgentConfigTrait;
     use tempfile::tempdir;
     use tokio::fs;
-
-    #[test]
-    fn test_create_readme_content() {
-        let content = create_readme_content();
-        assert!(content.contains("AI Context Management"));
-        assert!(content.contains("aicm generate"));
-        assert!(content.contains("docs/"));
-    }
 
     #[test]
     fn test_get_enabled_agents_with_filter() {

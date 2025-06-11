@@ -264,9 +264,9 @@ impl Default for AIContextConfig {
     fn default() -> Self {
         Self {
             version: "1.0".to_string(),
-            output_mode: None,       // デフォルトは None（merged として扱われる）
-            include_filenames: None, // デフォルトは None（false として扱われる）
-            base_docs_dir: "./docs".to_string(),
+            output_mode: Some(OutputMode::Merged), // デフォルトは merged
+            include_filenames: Some(false),        // デフォルトは false
+            base_docs_dir: "./ai-docs".to_string(),
             agents: AgentConfig::default(),
         }
     }
@@ -501,9 +501,10 @@ mod tests {
     fn test_default_config() {
         let config = AIContextConfig::default();
         assert_eq!(config.version, "1.0");
-        assert!(config.output_mode.is_none());
+        assert_eq!(config.output_mode, Some(OutputMode::Merged));
+        assert_eq!(config.include_filenames, Some(false));
         assert_eq!(config.get_global_output_mode(), OutputMode::Merged);
-        assert_eq!(config.base_docs_dir, "./docs");
+        assert_eq!(config.base_docs_dir, "./ai-docs");
         assert!(!config.agents.cursor.is_enabled());
         assert!(!config.agents.cline.is_enabled());
         assert!(!config.agents.github.is_enabled());
