@@ -159,10 +159,10 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.<name>.split_config.rules` | list | - | - | File splitting rules configuration |
 | `agents.<name>.split_config.rules[].file_patterns` | list<string> | ✓ | `["*project*"]` | File matching patterns (glob) |
 | `agents.cursor.split_config.rules[].alwaysApply` | boolean | - | `false` | Always apply rule |
-| `agents.github.split_config.rules[].apply_to` | list<string> | - | - | Target file patterns for application |
 | `agents.cursor.split_config.rules[].description` | string | - | - | Rule description |
 | `agents.cursor.split_config.rules[].manual` | boolean | - | `false` | Manual reference only |
 | `agents.cursor.split_config.rules[].globs` | list<string> | - | - | Auto-attach file patterns |
+| `agents.github.split_config.rules[].apply_to` | list<string> | - | - | Target file patterns for application |
 
 ## 🏗️ Project Structure
 
