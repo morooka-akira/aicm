@@ -182,7 +182,7 @@ agents: not_an_object
         // デフォルト値を確認
         assert_eq!(config.version, "1.0");
         assert_eq!(config.get_global_output_mode(), OutputMode::Merged);
-        assert_eq!(config.base_docs_dir, "./docs");
+        assert_eq!(config.base_docs_dir, "./ai-docs");
         assert!(!config.agents.cursor.is_enabled());
         assert!(!config.agents.cline.is_enabled());
         assert!(!config.agents.github.is_enabled());

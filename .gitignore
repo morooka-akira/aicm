@@ -53,19 +53,6 @@ tarpaulin-report.html
 *.bak
 *.tmp
 
-# AI Context Management specific
-ai-context.yaml.bak
-.cursor/
-generated-context/
-
-# Legacy Node.js files (can be removed after migration)
-node_modules/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-dist/
-*.tsbuildinfo
-
 # macOS
 .AppleDouble
 .LSOverride
@@ -82,3 +69,6 @@ $RECYCLE.BIN/
 .directory
 .Trash-*
 .nfs*
+
+# Project specific
+generated-context/
