@@ -1,5 +1,11 @@
 # AI Context Management Tool (aicm) 🦀
 
+<div align="center">
+
+**Languages:** [🇺🇸 English](README.md) • [🇯🇵 日本語](README.ja.md)
+
+</div>
+
 A unified CLI tool built in Rust to automatically generate context files for multiple AI coding agents from a single configuration.
 
 <div align="center">
