@@ -102,6 +102,14 @@ async fn handle_generate(agent_filter: Option<String>, config_path: Option<Strin
     // 設定ファイルを読み込み
     let config = load_config_from_path(config_file).await?;
 
+    // ドキュメントディレクトリの存在確認
+    if !Path::new(&config.base_docs_dir).exists() {
+        return Err(anyhow::anyhow!(
+            "❌ ドキュメントディレクトリが存在しません: {}\n💡 ディレクトリを作成するか、設定ファイルのbase_docs_dirを正しいパスに変更してください",
+            config.base_docs_dir
+        ));
+    }
+
     // 有効なエージェントを取得
     let enabled_agents = get_enabled_agents(&config, agent_filter);
 
@@ -139,12 +147,23 @@ async fn handle_validate(config_path: Option<String>) -> Result<()> {
         .await
         .map_err(anyhow::Error::from)?;
 
+    // ドキュメントディレクトリの存在確認
+    if !Path::new(&config.base_docs_dir).exists() {
+        return Err(anyhow::anyhow!(
+            "❌ ドキュメントディレクトリが存在しません: {}\n💡 ディレクトリを作成するか、設定ファイルのbase_docs_dirを正しいパスに変更してください",
+            config.base_docs_dir
+        ));
+    }
+
     println!("✅ 設定ファイルは有効です");
 
     // 基本情報を表示
     println!("  バージョン: {}", config.version);
     println!("  出力モード: {:?}", config.output_mode);
-    println!("  ドキュメントディレクトリ: {}", config.base_docs_dir);
+    println!(
+        "  ドキュメントディレクトリ: {} (存在します)",
+        config.base_docs_dir
+    );
 
     // 有効なエージェントを表示
     let enabled = config.enabled_agents();
@@ -152,16 +171,6 @@ async fn handle_validate(config_path: Option<String>) -> Result<()> {
         println!("  有効なエージェント: なし");
     } else {
         println!("  有効なエージェント: {}", enabled.join(", "));
-    }
-
-    // ドキュメントディレクトリの存在確認
-    if Path::new(&config.base_docs_dir).exists() {
-        println!("  ドキュメントディレクトリ: 存在します");
-    } else {
-        println!(
-            "  ⚠️  ドキュメントディレクトリが存在しません: {}",
-            config.base_docs_dir
-        );
     }
 
     Ok(())
@@ -426,15 +435,22 @@ invalid_yaml: [
     async fn test_handle_validate_with_custom_config() {
         let temp_dir = tempdir().unwrap();
         let config_path = temp_dir.path().join("validate-test-config.yaml");
+        let docs_dir = temp_dir.path().join("validate-docs");
 
-        let test_config_content = r#"
+        // docsディレクトリを作成
+        fs::create_dir_all(&docs_dir).await.unwrap();
+
+        let test_config_content = format!(
+            r#"
 version: "1.0"
 output_mode: split
-base_docs_dir: "./validate-docs"
+base_docs_dir: "{}"
 agents:
   cursor: true
   claude: true
-"#;
+"#,
+            docs_dir.to_string_lossy()
+        );
 
         fs::write(&config_path, test_config_content).await.unwrap();
 
@@ -469,5 +485,118 @@ agents:
                 assert!(e.to_string().contains("設定ファイルが見つかりません"));
             }
         }
+    }
+
+    #[tokio::test]
+    async fn test_handle_generate_with_nonexistent_docs_dir() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("test-config.yaml");
+        let nonexistent_docs = temp_dir.path().join("nonexistent-docs");
+
+        // 存在しないdocsディレクトリを指定した設定ファイルを作成
+        let config_content = format!(
+            r#"
+version: "1.0"
+output_mode: merged
+base_docs_dir: "{}"
+agents:
+  claude: true
+"#,
+            nonexistent_docs.to_string_lossy()
+        );
+
+        fs::write(&config_path, config_content).await.unwrap();
+
+        let result = handle_generate(None, Some(config_path.to_string_lossy().to_string())).await;
+        assert!(result.is_err());
+
+        let error_message = result.unwrap_err().to_string();
+        assert!(error_message.contains("ドキュメントディレクトリが存在しません"));
+        assert!(error_message.contains("nonexistent-docs"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_validate_with_nonexistent_docs_dir() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("test-config.yaml");
+        let nonexistent_docs = temp_dir.path().join("nonexistent-docs");
+
+        // 存在しないdocsディレクトリを指定した設定ファイルを作成
+        let config_content = format!(
+            r#"
+version: "1.0"
+output_mode: split
+base_docs_dir: "{}"
+agents:
+  claude: true
+"#,
+            nonexistent_docs.to_string_lossy()
+        );
+
+        fs::write(&config_path, config_content).await.unwrap();
+
+        let result = handle_validate(Some(config_path.to_string_lossy().to_string())).await;
+        assert!(result.is_err());
+
+        let error_message = result.unwrap_err().to_string();
+        assert!(error_message.contains("ドキュメントディレクトリが存在しません"));
+        assert!(error_message.contains("nonexistent-docs"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_generate_with_valid_docs_dir() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("test-config.yaml");
+        let docs_dir = temp_dir.path().join("docs");
+
+        // docsディレクトリを作成
+        fs::create_dir_all(&docs_dir).await.unwrap();
+        fs::write(docs_dir.join("test.md"), "# Test content")
+            .await
+            .unwrap();
+
+        // 存在するdocsディレクトリを指定した設定ファイルを作成
+        let config_content = format!(
+            r#"
+version: "1.0"
+output_mode: merged
+base_docs_dir: "{}"
+agents:
+  claude: true
+"#,
+            docs_dir.to_string_lossy()
+        );
+
+        fs::write(&config_path, config_content).await.unwrap();
+
+        let result = handle_generate(None, Some(config_path.to_string_lossy().to_string())).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_handle_validate_with_valid_docs_dir() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("test-config.yaml");
+        let docs_dir = temp_dir.path().join("docs");
+
+        // docsディレクトリを作成
+        fs::create_dir_all(&docs_dir).await.unwrap();
+
+        // 存在するdocsディレクトリを指定した設定ファイルを作成
+        let config_content = format!(
+            r#"
+version: "1.0"
+output_mode: split
+base_docs_dir: "{}"
+agents:
+  claude: true
+"#,
+            docs_dir.to_string_lossy()
+        );
+
+        fs::write(&config_path, config_content).await.unwrap();
+
+        let result = handle_validate(Some(config_path.to_string_lossy().to_string())).await;
+        assert!(result.is_ok());
     }
 }
