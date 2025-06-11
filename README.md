@@ -1,103 +1,108 @@
 # AI Context Management Tool (aicm) 🦀
 
-AI コーディングエージェント用の context ファイルを統一設定から自動生成する Rust 製 CLI ツール
+<div align="center">
 
-## ✨ 概要
+**Languages:** [🇺🇸 English](README.md) • [🇯🇵 日本語](README.ja.md)
 
-複数の AI ツール（GitHub Copilot、Cline、Cursor、Claude Code、OpenAI Codex）用の context ファイルを一元管理し、統一設定から各ツール固有のファイル形式を自動生成します。
+</div>
 
-## 🎯 サポート対象ツール
+A unified CLI tool built in Rust to automatically generate context files for multiple AI coding agents from a single configuration.
 
-- **✅ Cursor**: `.cursor/rules/*.mdc` ファイル（split_config対応）
-- **✅ Cline**: `.clinerules/*.md` ファイル
-- **✅ GitHub Copilot**: `.github/instructions/*.instructions.md` または `.github/copilot-instructions.md`（applyTo オプション対応）
-- **✅ Claude Code**: `CLAUDE.md`
-- **✅ OpenAI Codex**: `AGENTS.md`
+<div align="center">
 
-## 🚀 インストール
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/morooka-akira/ai-context-management/rust.yml?branch=main)](https://github.com/morooka-akira/ai-context-management/actions)
 
-### Cargo からインストール（推奨）
+[Installation](#installation) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Testing](#testing) • [Development](#development)
+
+</div>
+
+## ✨ Overview
+
+**aicm** streamlines AI-assisted development by centralizing context management for popular AI coding tools. Instead of maintaining separate configuration files for each tool, define your project context once and let aicm generate the appropriate formats for all your AI assistants.
+
+### 🎯 Supported Tools
+
+| Tool | Output Files | Features |
+|------|-------------|----------|
+| **✅ Cursor** | `.cursor/rules/*.mdc` | Split_config support, rule types |
+| **✅ Cline** | `.clinerules/*.md` | Simple markdown files |
+| **✅ GitHub Copilot** | `.github/instructions/*.instructions.md` | ApplyTo options, frontmatter |
+| **✅ Claude Code** | `CLAUDE.md` | Merged context file |
+| **✅ OpenAI Codex** | `AGENTS.md` | Merged context file |
+
+## 🚀 Installation
+
+### Using Cargo (Recommended)
 
 ```bash
-# crates.ioからインストール（今後公開予定）
+# Install from crates.io (coming soon)
 cargo install aicm
 
-# Gitリポジトリから直接インストール
-cargo install --git https://github.com/morooka-akira/aicm
+# Install directly from GitHub
+cargo install --git https://github.com/morooka-akira/ai-context-management
 
-# ローカルビルド・インストール
-git clone https://github.com/morooka-akira/aicm
-cd aicm
+# Local build and install
+git clone https://github.com/morooka-akira/ai-context-management
+cd ai-context-management
 cargo install --path .
 ```
 
-### 必要な環境
+### Requirements
 
-- Rust 1.70.0 以上
-- Cargo（Rust と一緒にインストールされます）
+- Rust 1.70.0 or higher
+- Cargo (installed with Rust)
 
-## 📖 使用方法
-
-### 基本的な使い方
+## ⚡ Quick Start
 
 ```bash
-# プロジェクトディレクトリで設定ファイルを初期化
+# Initialize configuration in your project
 aicm init
 
-# 設定ファイルを編集
+# Edit the configuration file
 vim ai-context.yaml
 
-# コンテキストファイルを生成
+# Generate context files for all enabled agents
 aicm generate
 
-# 特定のエージェントのみ生成
+# Generate for a specific agent only
 aicm generate --agent cursor
 
-# 外部設定ファイルを指定
-aicm generate --config /path/to/custom-config.yaml
-aicm generate -c ./configs/production.yaml
-
-# 特定のエージェントと外部設定の組み合わせ
-aicm generate --agent cursor --config custom.yaml
-
-# 設定ファイルを検証
+# Validate your configuration
 aicm validate
-
 ```
 
-## ⚙️ 設定ファイル仕様
+### Command Reference
 
-### 外部設定ファイルの使用
+| Command | Options | Description |
+|---------|---------|-------------|
+| `aicm init` | - | Initialize configuration template in current directory |
+| `aicm generate` | `--agent <name>`, `--config <path>`, `-c <path>` | Generate context files for AI agents |
+| `aicm validate` | `--config <path>`, `-c <path>` | Validate configuration file syntax and settings |
 
-`--config` / `-c` オプションを使用して、デフォルトの `ai-context.yaml` 以外の設定ファイルを指定できます。
+#### Option Details
 
-```bash
-# カスタム設定ファイルを使用
-aicm generate --config production.yaml
-aicm generate -c ./configs/staging.yaml
+| Option | Short | Type | Description |
+|--------|-------|------|-------------|
+| `--agent <name>` | - | string | Generate files for specific agent only (cursor, cline, github, claude, codex) |
+| `--config <path>` | `-c` | path | Use alternative configuration file instead of ai-context.yaml |
 
-# 絶対パスも使用可能
-aicm generate --config /etc/aicm/production.yaml
-```
+## 📖 Configuration
 
-この機能により、以下のような使い方が可能です：
+### Basic Configuration
 
-- **環境別設定**: 開発・ステージング・本番環境ごとに異なる設定
-- **チーム別設定**: チームごとに最適化された設定ファイル
-- **プロジェクト別設定**: 複数プロジェクトでの設定ファイル共有
-
-### 基本設定（ai-context.yaml）
+Create an `ai-context.yaml` file in your project root:
 
 ```yaml
 # ai-context.yaml
 version: "1.0"
 output_mode: split         # merged | split
-include_filenames: false   # merged モード時にファイル名ヘッダーを含めるか（デフォルト: false）
-base_docs_dir: ./ai-context
+include_filenames: false   # Include file name headers in merged mode
+base_docs_dir: ./ai-docs
 
-# エージェント設定
+# Simple agent configuration
 agents:
-  # シンプル設定（有効/無効のみ）
   cursor: true
   cline: false
   github: true
@@ -105,494 +110,211 @@ agents:
   codex: false
 ```
 
-### 詳細設定
-
-```yaml
-# ai-context.yaml
-version: "1.0" 
-output_mode: split
-include_filenames: false   # グローバル設定（デフォルト: false）
-base_docs_dir: ./ai-context
-
-agents:
-  # 詳細設定
-  cursor:
-    enabled: true
-    output_mode: split        # エージェント個別の出力モード
-    include_filenames: true   # エージェント個別のファイル名ヘッダー設定
-    split_config:             # Cursor split_config機能
-      rules:
-        - file_patterns: ["*project*", "*overview*"]
-          alwaysApply: true
-        - file_patterns: ["*architecture*", "*design*"]
-          globs: ["**/*.rs", "**/*.ts"]
-        - file_patterns: ["*development*", "*rules*"]
-          description: "開発ルール関連のエージェント要求"
-        - file_patterns: ["*setup*", "*install*"]
-          manual: true
-
-  cline:
-    enabled: true
-    output_mode: merged
-    include_filenames: false  # Clineではファイル名ヘッダーを無効化
-
-  github:
-    enabled: true
-    output_mode: split
-    split_config:             # GitHub applyTo オプション対応
-      rules:
-        - file_patterns: ["*architecture*", "*design*"]
-          apply_to: ["**/*.rs", "**/*.toml"]
-        - file_patterns: ["*frontend*", "*ui*"]
-          apply_to: ["**/*.ts", "**/*.tsx"]
-
-  claude:
-    enabled: true
-    include_filenames: true   # Claudeではファイル名ヘッダーを有効化
-    # Claude は常に merged モード
-
-  codex:
-    enabled: false
-    # Codex は常に merged モード
-```
-
-### include_filenames オプション
-
-`include_filenames` オプションは、merged モード時にファイル名ヘッダー（`# filename.md`）を含めるかどうかを制御します。
-
-#### 設定階層
-
-設定は以下の優先順位で適用されます：
-1. **エージェント個別設定** > **グローバル設定** > **デフォルト（false）**
-
-```yaml
-# グローバル設定
-include_filenames: true   # すべてのエージェントのデフォルト
-
-agents:
-  claude:
-    include_filenames: false  # Claudeのみオーバーライド（グローバル設定より優先）
-  
-  cursor:
-    # include_filenamesの指定なし → グローバル設定（true）を継承
-```
-
-#### 動作例
-
-**include_filenames: true の場合**
-```markdown
-# 01_project-overview.md
-
-# プロジェクト概要
-このプロジェクトは...
-
-# 02_architecture.md
-
-# アーキテクチャ
-システム設計について...
-```
-
-**include_filenames: false の場合**
-```markdown
-# プロジェクト概要
-このプロジェクトは...
-
-# アーキテクチャ
-システム設計について...
-```
-
-### Cursor split_config詳細
-
-Cursor の split_config 機能では、ファイルパターンに応じて異なるルールタイプを設定できます：
-
-#### ルールタイプ
-
-1. **Always（常時適用）**
-   ```yaml
-   - file_patterns: ["*common*", "*global*"]
-     alwaysApply: true
-   ```
-   生成結果：
-   ```yaml
-   ---
-   alwaysApply: true
-   ---
-   ```
-
-2. **Auto Attached（自動添付）**
-   ```yaml
-   - file_patterns: ["*rust*", "*backend*"]
-     globs: ["**/*.rs", "**/*.toml"]
-   ```
-   生成結果：
-   ```yaml
-   ---
-   description: ''
-   globs: ["**/*.rs", "**/*.toml"]
-   alwaysApply: false
-   ---
-   ```
-
-3. **Agent Requested（エージェント要求）**
-   ```yaml
-   - file_patterns: ["*api*", "*spec*"]
-     description: "API仕様書関連のルール"
-   ```
-   生成結果：
-   ```yaml
-   ---
-   description: API仕様書関連のルール
-   ---
-   ```
-
-4. **Manual（手動参照）**
-   ```yaml
-   - file_patterns: ["*troubleshoot*", "*debug*"]
-     manual: true
-   ```
-   生成結果：
-   ```yaml
-   ---
-   manual: true
-   ---
-   ```
-
-#### ファイルパターン
-
-- `*project*`: "project"を含むファイル名
-- `config*`: "config"で始まるファイル名  
-- `*setup`: "setup"で終わるファイル名
-- `exact.md`: 完全一致
-
-#### 優先順位
-
-複数の設定が同じルールに含まれる場合、以下の優先順位で適用されます：
-1. `manual: true`
-2. `alwaysApply: true`
-3. `globs` 設定
-4. `description` 設定
-5. デフォルト（alwaysApply: true）
-
-## 🔧 開発環境
-
-### セットアップ
-
-```bash
-# リポジトリをクローン
-git clone https://github.com/morooka-akira/aicm
-cd aicm
-
-# ビルド
-cargo build
-
-# テスト実行
-cargo test
-
-# リリースビルド
-cargo build --release
-
-# 開発版での実行
-cargo run -- init
-cargo run -- generate
-```
-
-### 使用技術
-
-- **言語**: Rust (Edition 2021)
-- **CLI Framework**: clap v4 (derive API)
-- **非同期処理**: Tokio
-- **設定**: YAML (serde_yaml)
-- **エラーハンドリング**: anyhow, thiserror
-- **テスト**: 標準テストフレームワーク + tokio-test
-
-## 📁 プロジェクト構造
-
-```
-aicm/
-├── src/
-│   ├── main.rs                 # CLI エントリーポイント
-│   ├── lib.rs                  # ライブラリエントリーポイント
-│   ├── config/                 # 設定管理
-│   │   ├── mod.rs
-│   │   ├── loader.rs           # 設定読み込み
-│   │   └── error.rs            # 設定エラー型
-│   ├── core/                   # コア機能
-│   │   ├── mod.rs
-│   │   └── markdown_merger.rs  # Markdownファイル結合
-│   ├── agents/                 # エージェント実装
-│   │   ├── mod.rs
-│   │   ├── base.rs            # ベースユーティリティ
-│   │   ├── cursor.rs          # Cursor実装（split_config対応）
-│   │   ├── cline.rs           # Cline実装
-│   │   ├── github.rs          # GitHub Copilot実装
-│   │   ├── claude.rs          # Claude Code実装
-│   │   └── codex.rs           # OpenAI Codex実装
-│   └── types/                  # 型定義
-│       ├── mod.rs
-│       ├── config.rs          # 設定型（CursorSplitConfig含む）
-│       └── agent.rs           # エージェント型
-├── docs/                      # 設計ドキュメント
-│   ├── concept.md             # 設計概要
-│   ├── design_doc.md          # 技術仕様書
-│   └── requirements.md        # 要件定義
-├── ai-works/                  # 開発作業記録
-├── target/                    # ビルド出力
-├── Cargo.toml                 # プロジェクト設定
-├── Cargo.lock                 # 依存関係ロック
-└── ai-context.yaml            # 設定ファイル例
-```
-
-## 📤 生成される出力
-
-### Cursor エージェント
-
-**Split モード（split_config なし）**
-```
-.cursor/rules/
-├── 01_project-overview.mdc
-├── 02_architecture.mdc
-├── 03_development-rules.mdc
-└── ...
-```
-
-**Split モード（split_config あり）**
-```
-.cursor/rules/
-├── project-overview.mdc      # alwaysApply: true
-├── architecture.mdc          # globs: ["**/*.rs"], alwaysApply: false
-├── development-rules.mdc     # description: "...", 
-└── setup.mdc                 # manual: true
-```
-
-**Merged モード**
-```
-.cursor/rules/
-└── context.mdc               # 全コンテンツを統合
-```
-
-### その他のエージェント
-
-**Cline**
-```
-.clinerules/
-├── 01-project-overview.md
-├── 02-architecture.md
-└── ...
-```
-
-**GitHub Copilot**
-```
-.github/
-├── instructions/
-│   ├── architecture.instructions.md   # applyTo: "**/*.rs,**/*.toml"
-│   ├── frontend.instructions.md       # applyTo: "**/*.ts,**/*.tsx"
-│   └── ...
-└── copilot-instructions.md            # merged モード時
-```
-
-**Claude Code**
-```
-CLAUDE.md                     # 常に merged モード
-```
-
-**OpenAI Codex**
-```
-AGENTS.md                     # 常に merged モード
-```
-
-## 💡 使用例
-
-### 実際の設定例
-
-プロジェクトルートに `ai-context.yaml` を作成：
+### Advanced Configuration
 
 ```yaml
 version: "1.0"
 output_mode: split
-include_filenames: false    # デフォルトではファイル名ヘッダーを含めない
+include_filenames: false
 base_docs_dir: ./ai-context
 
 agents:
+  # Advanced Cursor configuration with split_config
   cursor:
     enabled: true
     output_mode: split
-    include_filenames: true  # Cursorではファイル名ヘッダーを有効化
+    include_filenames: true
     split_config:
       rules:
-        # プロジェクト概要は常に適用
-        - file_patterns: ["*overview*", "*readme*"]
+        - file_patterns: ["*project*", "*overview*"]
           alwaysApply: true
-          
-        # Rustファイル編集時にアーキテクチャ情報を自動添付
-        - file_patterns: ["*architecture*", "*design*"]
-          globs: ["**/*.rs", "**/*.toml"]
-          
-        # API開発時にエージェントが判断して適用
-        - file_patterns: ["*api*", "*endpoint*"]
-          description: "API設計とエンドポイント仕様"
-          
-        # トラブルシューティングは手動参照のみ
+        - file_patterns: ["*architecture*", "*design*"] 
+          globs: ["**/*.rs", "**/*.ts"]
+        - file_patterns: ["*development*", "*rules*"]
+          description: "Development guidelines and coding standards"
         - file_patterns: ["*troubleshoot*", "*debug*"]
           manual: true
 
-  cline:
-    enabled: true
-    output_mode: merged
-    include_filenames: false  # Clineではファイル名ヘッダーを無効化
-
+  # GitHub Copilot with applyTo options
   github:
     enabled: true
     output_mode: split
-    # include_filenamesの指定なし → グローバル設定（false）を継承
+    split_config:
+      rules:
+        - file_patterns: ["*backend*", "*api*"]
+          apply_to: ["**/*.rs", "**/*.toml"]
+        - file_patterns: ["*frontend*", "*ui*"]
+          apply_to: ["**/*.ts", "**/*.tsx"]
 
-  claude: true  # シンプル設定（デフォルト有効、グローバル設定を継承）
-  
-  codex: false  # シンプル設定（デフォルト無効）
+  # Simple configurations
+  claude: true
+  cline: false
+  codex: false
 ```
 
-### ディレクトリ構造例
+### External Configuration Files
+
+Use the `--config` / `-c` option to specify alternative configuration files:
+
+```bash
+# Use custom configuration
+aicm generate --config production.yaml
+aicm generate -c ./configs/staging.yaml
+
+# Combine with specific agent
+aicm generate --agent cursor --config custom.yaml
+```
+
+### Configuration Reference
+
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `version` | string | ✓ | `"1.0"` | Configuration file version |
+| `output_mode` | enum(split/merged) | ✓ | `"split"` | Document output mode |
+| `base_docs_dir` | string | ✓ | `"./ai-context"` | Base documentation directory |
+| `include_filenames` | boolean | - | `false` | Include file name headers in merged mode |
+| `agents` | map | ✓ | - | Agent configuration block |
+| `agents.<name>.enabled` | boolean | - | `true` | Enable/disable agent |
+| `agents.<name>.output_mode` | string | - | `"split"` | Agent-specific output mode |
+| `agents.<name>.include_filenames` | boolean | - | `false` | Agent-specific filename headers |
+| `agents.<name>.split_config.rules` | list | - | - | File splitting rules configuration |
+| `agents.<name>.split_config.rules[].file_patterns` | list<string> | ✓ | `["*project*"]` | File matching patterns (glob) |
+| `agents.cursor.split_config.rules[].alwaysApply` | boolean | - | `false` | Always apply rule |
+| `agents.cursor.split_config.rules[].description` | string | - | - | Rule description |
+| `agents.cursor.split_config.rules[].manual` | boolean | - | `false` | Manual reference only |
+| `agents.cursor.split_config.rules[].globs` | list<string> | - | - | Auto-attach file patterns |
+| `agents.github.split_config.rules[].apply_to` | list<string> | - | - | Target file patterns for application |
+
+## 🏗️ Project Structure
 
 ```
 your-project/
-├── ai-context/                    # base_docs_dir
+├── ai-context/              # Documentation directory (base_docs_dir)
 │   ├── 01-project-overview.md
 │   ├── 02-architecture.md
-│   ├── 03-api-design.md
-│   ├── 04-troubleshooting.md
-│   └── 05-coding-standards.md
-├── ai-context.yaml               # 設定ファイル
+│   ├── 03-development-rules.md
+│   └── 04-api-reference.md
+├── ai-context.yaml          # Configuration file
 ├── src/
 │   └── main.rs
 └── Cargo.toml
 ```
 
-### 実行例
+## 📤 Generated Output
+
+### Cursor
+```
+.cursor/rules/
+├── project-overview.mdc      # alwaysApply: true
+├── architecture.mdc          # globs: ["**/*.rs"]
+└── development-rules.mdc     # description: "..."
+```
+
+### GitHub Copilot
+```
+.github/instructions/
+├── backend.instructions.md   # applyTo: "**/*.rs,**/*.toml"
+└── frontend.instructions.md  # applyTo: "**/*.ts,**/*.tsx"
+```
+
+### Other Agents
+```
+.clinerules/context.md        # Cline (merged)
+CLAUDE.md                     # Claude Code (merged)
+AGENTS.md                     # OpenAI Codex (merged)
+```
+
+## 🧪 Testing
 
 ```bash
-# 設定ファイルを初期化
-aicm init
-
-# 全エージェント向けファイル生成
-aicm generate
-
-# Cursor専用ファイルのみ生成
-aicm generate --agent cursor
-
-# 外部設定ファイルを使用
-aicm generate --config production.yaml
-
-# 特定エージェント + 外部設定ファイル
-aicm generate --agent github --config ./configs/github-only.yaml
-
-# 設定ファイルの妥当性確認
-aicm validate
-```
-
-### 生成結果
-
-```
-your-project/
-├── .cursor/rules/
-│   ├── project-overview.mdc     # alwaysApply: true
-│   ├── architecture.mdc         # globs: ["**/*.rs"]
-│   ├── api-design.mdc          # description: "API設計..."
-│   ├── troubleshooting.mdc     # manual: true
-│   └── coding-standards.mdc    # alwaysApply: true (デフォルト)
-├── .clinerules/
-│   └── context.md              # 全コンテンツ統合
-├── .github/
-│   └── instructions/
-│       ├── architecture.instructions.md   # applyTo frontmatter付き
-│       ├── frontend.instructions.md       # applyTo frontmatter付き
-│       └── ...
-├── CLAUDE.md                   # Claude用（全コンテンツ統合）
-└── AGENTS.md                   # Codex用（全コンテンツ統合）
-```
-
-## 🧪 テスト
-
-```bash
-# 全テスト実行
+# Run all tests
 cargo test
 
-# 特定のテストモジュール実行
+# Run specific test module
 cargo test config
 
-# テストカバレッジ（tarpaulin要インストール）
+# Run with coverage (requires cargo-tarpaulin)
 cargo install cargo-tarpaulin
 cargo tarpaulin --out html
 
-# 統合テスト実行
+# Integration tests
 cargo test --test integration_test
 ```
 
-## 🚢 配布・デプロイ
+## 🛠️ Development
 
-### リリースビルド
-
-```bash
-# 最適化されたバイナリビルド
-cargo build --release
-
-# バイナリは target/release/aicm に生成されます
-```
-
-### クロスコンパイル（例）
+### Setup
 
 ```bash
-# macOS用（Apple Silicon）
-cargo build --release --target aarch64-apple-darwin
-
-# Linux用
-cargo build --release --target x86_64-unknown-linux-gnu
-
-# Windows用
-cargo build --release --target x86_64-pc-windows-gnu
+git clone https://github.com/morooka-akira/ai-context-management
+cd ai-context-management
+cargo build
+cargo test
 ```
 
-## ⚡ パフォーマンス特徴
+### Code Quality
 
-- **高速起動**: Rust ネイティブバイナリによる瞬時起動
-- **低メモリ使用量**: 効率的なメモリ管理
-- **並列処理**: Tokio による非同期ファイル処理
-- **ゼロコピー**: 不要な文字列コピーの回避
+```bash
+# Format code
+cargo fmt
 
-## 🔒 セキュリティ
+# Run linter
+cargo clippy
 
-- **メモリ安全**: Rust の所有権システムによる保証
-- **型安全**: コンパイル時の厳密な型チェック
-- **パストラバーサル防止**: 適切なパス正規化
+# Check all targets
+cargo clippy --all-targets --all-features
+```
 
-## 🤝 コントリビューション
+### Architecture
 
-1. このリポジトリをフォーク
-2. 機能ブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
+```
+src/
+├── main.rs                 # CLI entry point
+├── lib.rs                  # Library entry point
+├── config/                 # Configuration management
+├── core/                   # Core functionality
+├── agents/                 # Agent implementations
+└── types/                  # Type definitions
+```
 
-### 開発ガイドライン
+## 🤝 Contributing
 
-- コードは Rustfmt でフォーマット（`cargo fmt`）
-- Clippy の警告を解決（`cargo clippy`）
-- テストを追加（`cargo test`）
-- ドキュメントを更新
+We welcome contributions! Please follow these steps:
 
-## 📝 ライセンス
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Run `cargo fmt` and `cargo clippy`
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to your branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照
+### Development Guidelines
 
-## 🙏 謝辞
+- Follow Rust best practices and idioms
+- Add comprehensive tests for new features
+- Update documentation for user-facing changes
+- Run the full test suite before submitting
+- Use conventional commit messages
 
-このプロジェクトは以下の素晴らしいツールによって支えられています：
+## 📄 License
 
-- [clap](https://github.com/clap-rs/clap) - CLI 構築フレームワーク
-- [tokio](https://github.com/tokio-rs/tokio) - 非同期ランタイム
-- [serde](https://github.com/serde-rs/serde) - シリアライゼーション
-- [anyhow](https://github.com/dtolnay/anyhow) - エラーハンドリング
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📞 サポート
+## 🙏 Acknowledgments
 
-- バグ報告: [Issues](https://github.com/morooka-akira/aicm/issues)
-- 機能要求: [Issues](https://github.com/morooka-akira/aicm/issues)
-- ディスカッション: [Discussions](https://github.com/morooka-akira/aicm/discussions)
+This project is built with excellent Rust ecosystem tools:
+
+- [clap](https://github.com/clap-rs/clap) - Command line argument parsing
+- [tokio](https://github.com/tokio-rs/tokio) - Asynchronous runtime
+- [serde](https://github.com/serde-rs/serde) - Serialization framework
+- [anyhow](https://github.com/dtolnay/anyhow) - Error handling
+
+## 📞 Support
+
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/morooka-akira/ai-context-management/issues)
+- 💡 **Feature Requests**: [GitHub Issues](https://github.com/morooka-akira/ai-context-management/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/morooka-akira/ai-context-management/discussions)
+
+---
