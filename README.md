@@ -164,12 +164,6 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.<name>.split_config.rules[].manual` | boolean | - | `false` | Manual reference only |
 | `agents.<name>.split_config.rules[].globs` | list<string> | - | - | Auto-attach file patterns |
 
-**Notes:**
-- Paths use "dot+" bracket notation for nested values
-- List elements are indicated with `[]` notation  
-- Variable parts use `<name>` placeholders
-- Columns: Type / Required / Default / Description ensure readability
-
 ## 🏗️ Project Structure
 
 ```
