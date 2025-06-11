@@ -396,19 +396,24 @@ agents:
 
     #[tokio::test]
     async fn test_handle_validate_default_config() {
-        // デフォルト設定でのvalidateテスト
+        // 一時ディレクトリでテストを実行
+        let temp_dir = tempdir().unwrap();
+
+        // 現在の作業ディレクトリを保存
+        let original_dir = std::env::current_dir().unwrap();
+
+        // テスト実行中は一時ディレクトリに移動
+        std::env::set_current_dir(temp_dir.path()).unwrap();
+
         let result = handle_validate(None).await;
 
-        // デフォルトファイルが存在する場合は成功、存在しない場合はエラー
-        match result {
-            Ok(_) => {
-                // ファイルが存在する場合は正常に処理される
-            }
-            Err(e) => {
-                // ファイルが存在しない場合はエラーが返される
-                assert!(e.to_string().contains("設定ファイルが見つかりません"));
-            }
-        }
+        // 作業ディレクトリを元に戻す
+        std::env::set_current_dir(original_dir).unwrap();
+
+        // デフォルトファイルが存在しない場合はエラーが返される
+        assert!(result.is_err());
+        let error_message = result.unwrap_err().to_string();
+        assert!(error_message.contains("設定ファイルが見つかりません"));
     }
 
     #[tokio::test]
@@ -493,7 +498,17 @@ agents:
 
         fs::write(&config_path, config_content).await.unwrap();
 
+        // 現在の作業ディレクトリを保存
+        let original_dir = std::env::current_dir().unwrap();
+
+        // テスト実行中は一時ディレクトリに移動して出力ファイルを隔離
+        std::env::set_current_dir(temp_dir.path()).unwrap();
+
         let result = handle_generate(None, Some(config_path.to_string_lossy().to_string())).await;
+
+        // 作業ディレクトリを元に戻す
+        std::env::set_current_dir(original_dir).unwrap();
+
         assert!(result.is_ok());
     }
 
