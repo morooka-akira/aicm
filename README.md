@@ -144,6 +144,32 @@ aicm generate -c ./configs/staging.yaml
 aicm generate --agent cursor --config custom.yaml
 ```
 
+### Configuration Reference
+
+| Key | Type | Required | Default | Description |
+|-----|------|----------|---------|-------------|
+| `version` | string | ✓ | `"1.0"` | Configuration file version |
+| `output_mode` | enum(split/merged) | ✓ | `"split"` | Document output mode |
+| `base_docs_dir` | string | ✓ | `"./ai-context"` | Base documentation directory |
+| `include_filenames` | boolean | - | `false` | Include file name headers in merged mode |
+| `agents` | map | ✓ | - | Agent configuration block |
+| `agents.<name>.enabled` | boolean | - | `true` | Enable/disable agent |
+| `agents.<name>.output_mode` | string | - | `"split"` | Agent-specific output mode |
+| `agents.<name>.include_filenames` | boolean | - | `false` | Agent-specific filename headers |
+| `agents.<name>.split_config.rules` | list | - | - | File splitting rules configuration |
+| `agents.<name>.split_config.rules[].file_patterns` | list<string> | ✓ | `["*project*"]` | File matching patterns (glob) |
+| `agents.<name>.split_config.rules[].alwaysApply` | boolean | - | `false` | Always apply rule |
+| `agents.<name>.split_config.rules[].apply_to` | list<string> | - | - | Target file patterns for application |
+| `agents.<name>.split_config.rules[].description` | string | - | - | Rule description |
+| `agents.<name>.split_config.rules[].manual` | boolean | - | `false` | Manual reference only |
+| `agents.<name>.split_config.rules[].globs` | list<string> | - | - | Auto-attach file patterns |
+
+**Notes:**
+- Paths use "dot+" bracket notation for nested values
+- List elements are indicated with `[]` notation  
+- Variable parts use `<name>` placeholders
+- Columns: Type / Required / Default / Description ensure readability
+
 ## 🏗️ Project Structure
 
 ```
