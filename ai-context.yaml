@@ -6,27 +6,19 @@ agents:
     output_mode: split
     split_config:
       rules:
-        - file_patterns: ["*project*", "*overview*"]
+        - file_patterns: ["*project*"]
           alwaysApply: true
-        - file_patterns: ["*architecture*"]
-          globs: ["**/*.rs"]
-        - file_patterns: ["*development-rules*"]
-          description: "開発ルール関連のエージェント要求"
-        - file_patterns: ["*setup*", "*development-setup*"]
-          manual: true
-  claude: true
-  codex: true
+        - file_patterns: ["*development*"]
+          alwaysApply: true
+        - file_patterns: ["*rust*"]
+          description: "Rustコードを実装する開発作業"
   github:
     output_mode: split
     split_config:
       rules:
-        - file_patterns: ["*project*", "*overview*"]
-          apply_to: ["**"]
-        - file_patterns: ["*architecture*"]
-          apply_to: ["**/*.rs", "**/*.toml"]
-        - file_patterns: ["*development*", "*setup*"]
-          apply_to: ["**/*.rs", "**/*.md"]
-        - file_patterns: ["*dependencies*"]
-          apply_to: ["**/Cargo.toml", "**/package.json"]
+        - file_patterns: ["*rust*"]
+          apply_to: ["**/*.rs"]
   cline:
     output_mode: split
+  claude: true
+  codex: true
