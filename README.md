@@ -8,7 +8,7 @@ A unified CLI tool built in Rust to automatically generate context files for mul
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/morooka-akira/ai-context-management/rust.yml?branch=main)](https://github.com/morooka-akira/ai-context-management/actions)
 
-[Installation](#installation) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Examples](#examples) • [Documentation](#documentation)
+[Installation](#installation) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Testing](#testing) • [Development](#development)
 
 </div>
 
@@ -179,48 +179,6 @@ your-project/
 .clinerules/context.md        # Cline (merged)
 CLAUDE.md                     # Claude Code (merged)
 AGENTS.md                     # OpenAI Codex (merged)
-```
-
-## 💡 Examples
-
-### Multi-Environment Setup
-
-```yaml
-# development.yaml
-version: "1.0"
-output_mode: split
-base_docs_dir: ./docs/dev
-agents:
-  cursor: true
-  claude: true
-  github: false
-
-# production.yaml  
-version: "1.0"
-output_mode: merged
-base_docs_dir: ./docs/prod
-agents:
-  cursor: false
-  claude: true
-  github: true
-```
-
-```bash
-# Development environment
-aicm generate --config development.yaml
-
-# Production environment  
-aicm generate --config production.yaml
-```
-
-### Team-Specific Configurations
-
-```bash
-# Backend team configuration
-aicm generate --config configs/backend-team.yaml
-
-# Frontend team configuration
-aicm generate --config configs/frontend-team.yaml
 ```
 
 ## 🧪 Testing
