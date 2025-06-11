@@ -8,6 +8,12 @@ license = "MIT"
 repository = "https://github.com/morooka-akira/aicm"
 keywords = ["ai", "context", "cli", "agents", "tools"]
 categories = ["command-line-utilities", "development-tools"]
+exclude = [
+    "ai-works/",
+    "ai-context/", 
+    "docs/",
+    "ai-context.yaml"
+]
 
 [dependencies]
 # CLI framework
