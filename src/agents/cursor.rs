@@ -156,14 +156,13 @@ impl CursorAgent {
     /// MDC形式のコンテンツを作成（YAML frontmatter + Markdown）
     fn create_mdc_content(&self, markdown_content: &str) -> String {
         let frontmatter = self.create_frontmatter();
-        format!("---\n{}\n---\n\n{}", frontmatter, markdown_content)
+        format!("---\n{}---\n\n{}", frontmatter, markdown_content)
     }
 
-    /// YAML frontmatterを作成（デフォルト: alwaysApply: trueのみ）
+    /// YAML frontmatterを作成（デフォルト: Always Apply形式）
     fn create_frontmatter(&self) -> String {
-        let mut frontmatter = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
-        frontmatter["alwaysApply"] = serde_yaml::Value::Bool(true);
-        serde_yaml::to_string(&frontmatter).unwrap_or_default()
+        // 直接文字列で組み立てて理想的なフォーマットにする
+        "description:\nglobs:\nalwaysApply: true\n".to_string()
     }
 
     /// split_config設定を取得
@@ -214,48 +213,40 @@ impl CursorAgent {
         rule: &crate::types::CursorSplitRule,
     ) -> String {
         let frontmatter = self.create_frontmatter_with_rule(rule);
-        format!("---\n{}\n---\n\n{}", frontmatter, markdown_content)
+        format!("---\n{}---\n\n{}", frontmatter, markdown_content)
     }
 
     /// ルール設定を含むYAML frontmatterを作成
     fn create_frontmatter_with_rule(&self, rule: &crate::types::CursorSplitRule) -> String {
-        let mut frontmatter = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
-
         // 優先順位: manual > alwaysApply > globs > description
         if rule.manual == Some(true) {
-            // Manual: manual: true
-            frontmatter["manual"] = serde_yaml::Value::Bool(true);
+            // Manual: description:, globs:, alwaysApply: false
+            "description:\nglobs:\nalwaysApply: false\n".to_string()
         } else if rule.always_apply == Some(true) {
-            // Always: alwaysApply: true
-            frontmatter["alwaysApply"] = serde_yaml::Value::Bool(true);
+            // Always Apply: description:, globs:, alwaysApply: true
+            "description:\nglobs:\nalwaysApply: true\n".to_string()
         } else if let Some(globs) = &rule.globs {
-            // Auto Attached: description（空）、globs、alwaysApply: false
-            frontmatter["description"] = serde_yaml::Value::String("".to_string());
-            match globs.len() {
-                1 => {
-                    frontmatter["globs"] = serde_yaml::Value::String(globs[0].clone());
-                }
+            // Auto Attached: description:, globs: 値, alwaysApply: false
+            let globs_value = match globs.len() {
+                1 => format!(" {}", globs[0]),
                 len if len > 1 => {
-                    let globs_values: Vec<serde_yaml::Value> = globs
+                    let globs_list = globs
                         .iter()
-                        .map(|g| serde_yaml::Value::String(g.clone()))
-                        .collect();
-                    frontmatter["globs"] = serde_yaml::Value::Sequence(globs_values);
+                        .map(|g| format!("  - {}", g))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    format!("\n{}", globs_list)
                 }
-                _ => {
-                    // 0の場合は何もしない
-                }
-            }
-            frontmatter["alwaysApply"] = serde_yaml::Value::Bool(false);
+                _ => "".to_string(), // 0の場合は空
+            };
+            format!("description:\nglobs:{}\nalwaysApply: false\n", globs_value)
         } else if let Some(desc) = &rule.description {
-            // Agent Requested: descriptionのみ
-            frontmatter["description"] = serde_yaml::Value::String(desc.clone());
+            // Agent Requested: description: 値, globs:, alwaysApply: false
+            format!("description: {}\nglobs:\nalwaysApply: false\n", desc)
         } else {
-            // デフォルト: Always
-            frontmatter["alwaysApply"] = serde_yaml::Value::Bool(true);
+            // デフォルト: Always Apply
+            "description:\nglobs:\nalwaysApply: true\n".to_string()
         }
-
-        serde_yaml::to_string(&frontmatter).unwrap_or_default()
     }
 }
 
@@ -292,6 +283,8 @@ mod tests {
         assert_eq!(files[0].path, expected_path);
         assert!(files[0].content.contains("---"));
         assert!(files[0].content.contains("alwaysApply: true"));
+        assert!(files[0].content.contains("description:"));
+        assert!(files[0].content.contains("globs:"));
     }
 
     #[tokio::test]
@@ -357,6 +350,8 @@ mod tests {
         for file in &files {
             assert!(file.content.contains("---"));
             assert!(file.content.contains("alwaysApply: true"));
+            assert!(file.content.contains("description:"));
+            assert!(file.content.contains("globs:"));
 
             if file.path.contains("file1") {
                 assert!(file.content.contains("Content 1"));
@@ -403,7 +398,8 @@ mod tests {
 
         assert!(mdc_content.starts_with("---"));
         assert!(mdc_content.contains("alwaysApply: true"));
-        assert!(mdc_content.contains("alwaysApply:"));
+        assert!(mdc_content.contains("description:"));
+        assert!(mdc_content.contains("globs:"));
         assert!(mdc_content.contains("---\n\n# Test\nContent here"));
     }
 
@@ -416,6 +412,8 @@ mod tests {
 
         // YAML形式であることを確認
         assert!(frontmatter.contains("alwaysApply:"));
+        assert!(frontmatter.contains("description:"));
+        assert!(frontmatter.contains("globs:"));
 
         // パース可能であることを確認
         let parsed: serde_yaml::Value = serde_yaml::from_str(&frontmatter).unwrap();
@@ -579,10 +577,10 @@ mod tests {
 
         // manual.mdcファイルが生成されることを確認
         let manual_file = files.iter().find(|f| f.path.contains("manual")).unwrap();
-        assert!(manual_file.content.contains("manual: true"));
-        assert!(!manual_file.content.contains("alwaysApply:"));
-        assert!(!manual_file.content.contains("globs:"));
-        assert!(!manual_file.content.contains("description:"));
+        assert!(manual_file.content.contains("description:"));
+        assert!(manual_file.content.contains("globs:"));
+        assert!(manual_file.content.contains("alwaysApply: false"));
+        assert!(!manual_file.content.contains("manual:"));
     }
 
     #[tokio::test]
@@ -618,9 +616,9 @@ mod tests {
 
         let always_file = files.iter().find(|f| f.path.contains("always")).unwrap();
         assert!(always_file.content.contains("alwaysApply: true"));
+        assert!(always_file.content.contains("description:"));
+        assert!(always_file.content.contains("globs:"));
         assert!(!always_file.content.contains("manual:"));
-        assert!(!always_file.content.contains("globs:"));
-        assert!(!always_file.content.contains("description:"));
     }
 
     #[tokio::test]
@@ -655,8 +653,8 @@ mod tests {
         let files = agent.generate().await.unwrap();
 
         let rust_file = files.iter().find(|f| f.path.contains("rust")).unwrap();
-        assert!(rust_file.content.contains("description: ''"));
-        assert!(rust_file.content.contains("globs: '**/*.rs'"));
+        assert!(rust_file.content.contains("description:"));
+        assert!(rust_file.content.contains("globs: **/*.rs"));
         assert!(rust_file.content.contains("alwaysApply: false"));
         assert!(!rust_file.content.contains("manual:"));
     }
@@ -696,9 +694,9 @@ mod tests {
         assert!(agent_file
             .content
             .contains("description: Agent requested rule"));
+        assert!(agent_file.content.contains("globs:"));
+        assert!(agent_file.content.contains("alwaysApply: false"));
         assert!(!agent_file.content.contains("manual:"));
-        assert!(!agent_file.content.contains("alwaysApply:"));
-        assert!(!agent_file.content.contains("globs:"));
     }
 
     #[tokio::test]
@@ -733,7 +731,7 @@ mod tests {
         let files = agent.generate().await.unwrap();
 
         let multi_file = files.iter().find(|f| f.path.contains("multi")).unwrap();
-        assert!(multi_file.content.contains("description: ''"));
+        assert!(multi_file.content.contains("description:"));
         assert!(multi_file.content.contains("globs:"));
         assert!(multi_file.content.contains("**/*.rs"));
         assert!(multi_file.content.contains("**/*.toml"));
@@ -772,10 +770,14 @@ mod tests {
         assert_eq!(files.len(), 2);
 
         let matched_file = files.iter().find(|f| f.path.contains("matched")).unwrap();
-        assert!(matched_file.content.contains("manual: true"));
+        assert!(matched_file.content.contains("description:"));
+        assert!(matched_file.content.contains("globs:"));
+        assert!(matched_file.content.contains("alwaysApply: false"));
 
         let unmatched_file = files.iter().find(|f| f.path.contains("unmatched")).unwrap();
         assert!(unmatched_file.content.contains("alwaysApply: true"));
+        assert!(unmatched_file.content.contains("description:"));
+        assert!(unmatched_file.content.contains("globs:"));
         assert!(!unmatched_file.content.contains("manual:"));
     }
 
@@ -832,12 +834,12 @@ mod tests {
             CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
-        // manualが最優先なので、manual: trueのみ含まれるべき
+        // manualが最優先なので、Manual形式になるべき
         let priority_file = files.iter().find(|f| f.path.contains("priority")).unwrap();
-        assert!(priority_file.content.contains("manual: true"));
-        assert!(!priority_file.content.contains("alwaysApply:"));
-        assert!(!priority_file.content.contains("globs:"));
-        assert!(!priority_file.content.contains("description:"));
+        assert!(priority_file.content.contains("description:"));
+        assert!(priority_file.content.contains("globs:"));
+        assert!(priority_file.content.contains("alwaysApply: false"));
+        assert!(!priority_file.content.contains("manual:"));
     }
 
     #[tokio::test]
