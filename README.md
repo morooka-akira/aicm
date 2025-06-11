@@ -312,9 +312,3 @@ This project is built with excellent Rust ecosystem tools:
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/morooka-akira/ai-context-management/discussions)
 
 ---
-
-<div align="center">
-
-Made with ❤️ for the AI-assisted development community
-
-</div>
