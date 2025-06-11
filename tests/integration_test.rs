@@ -175,19 +175,26 @@ fn test_cli_validate_with_nonexistent_config() {
 fn test_cli_validate_with_custom_config() {
     let temp_dir = tempdir().unwrap();
     let config_path = temp_dir.path().join("validate-custom.yaml");
+    let docs_path = temp_dir.path().join("docs");
+
+    // docsディレクトリを作成
+    std::fs::create_dir_all(&docs_path).unwrap();
 
     // 有効な設定ファイルを作成（clineを無効にしてファイル削除を回避）
-    let config_content = r#"
+    let config_content = format!(
+        r#"
 version: "1.0"
 output_mode: split
-base_docs_dir: "./docs"
+base_docs_dir: "{}"
 agents:
   cursor: false
   claude: true
   cline: false
   github: false
   codex: false
-"#;
+"#,
+        docs_path.to_string_lossy()
+    );
 
     std::fs::write(&config_path, config_content).unwrap();
 
@@ -201,4 +208,74 @@ agents:
     assert!(stdout.contains("設定ファイルを検証します"));
     assert!(stdout.contains("validate-custom.yaml"));
     assert!(stdout.contains("設定ファイルは有効です"));
+}
+
+#[test]
+fn test_cli_generate_with_nonexistent_docs_dir() {
+    let temp_dir = tempdir().unwrap();
+    let config_path = temp_dir.path().join("bad-config.yaml");
+    let nonexistent_docs = temp_dir.path().join("nonexistent-docs");
+
+    // 存在しないdocsディレクトリを指定した設定ファイルを作成
+    let config_content = format!(
+        r#"
+version: "1.0"
+output_mode: merged
+base_docs_dir: "{}"
+agents:
+  claude: true
+  cline: false
+  cursor: false
+  github: false
+  codex: false
+"#,
+        nonexistent_docs.to_string_lossy()
+    );
+
+    std::fs::write(&config_path, config_content).unwrap();
+
+    let output = run_aicm_command(
+        &["generate", "--config", &config_path.to_string_lossy()],
+        Some(temp_dir.path()),
+    );
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("ドキュメントディレクトリが存在しません"));
+    assert!(stderr.contains("nonexistent-docs"));
+}
+
+#[test]
+fn test_cli_validate_with_nonexistent_docs_dir() {
+    let temp_dir = tempdir().unwrap();
+    let config_path = temp_dir.path().join("bad-config.yaml");
+    let nonexistent_docs = temp_dir.path().join("nonexistent-docs");
+
+    // 存在しないdocsディレクトリを指定した設定ファイルを作成
+    let config_content = format!(
+        r#"
+version: "1.0"
+output_mode: split
+base_docs_dir: "{}"
+agents:
+  claude: true
+  cline: false
+  cursor: false
+  github: false
+  codex: false
+"#,
+        nonexistent_docs.to_string_lossy()
+    );
+
+    std::fs::write(&config_path, config_content).unwrap();
+
+    let output = run_aicm_command(
+        &["validate", "--config", &config_path.to_string_lossy()],
+        Some(temp_dir.path()),
+    );
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("ドキュメントディレクトリが存在しません"));
+    assert!(stderr.contains("nonexistent-docs"));
 }
