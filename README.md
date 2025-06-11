@@ -18,11 +18,13 @@ A unified CLI tool built in Rust to automatically generate context files for mul
 
 ### 🎯 Supported Tools
 
-- **✅ Cursor**: `.cursor/rules/*.mdc` files (with split_config support)
-- **✅ Cline**: `.clinerules/*.md` files  
-- **✅ GitHub Copilot**: `.github/instructions/*.instructions.md` or `.github/copilot-instructions.md` (with applyTo options)
-- **✅ Claude Code**: `CLAUDE.md`
-- **✅ OpenAI Codex**: `AGENTS.md`
+| Tool | Output Files | Features |
+|------|-------------|----------|
+| **✅ Cursor** | `.cursor/rules/*.mdc` | Split_config support, rule types |
+| **✅ Cline** | `.clinerules/*.md` | Simple markdown files |
+| **✅ GitHub Copilot** | `.github/instructions/*.instructions.md` | ApplyTo options, frontmatter |
+| **✅ Claude Code** | `CLAUDE.md` | Merged context file |
+| **✅ OpenAI Codex** | `AGENTS.md` | Merged context file |
 
 ## 🚀 Installation
 
