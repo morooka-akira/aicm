@@ -67,6 +67,21 @@ aicm generate --agent cursor
 aicm validate
 ```
 
+### Command Reference
+
+| Command | Options | Description |
+|---------|---------|-------------|
+| `aicm init` | - | Initialize configuration template in current directory |
+| `aicm generate` | `--agent <name>`, `--config <path>`, `-c <path>` | Generate context files for AI agents |
+| `aicm validate` | `--config <path>`, `-c <path>` | Validate configuration file syntax and settings |
+
+#### Option Details
+
+| Option | Short | Type | Description |
+|--------|-------|------|-------------|
+| `--agent <name>` | - | string | Generate files for specific agent only (cursor, cline, github, claude, codex) |
+| `--config <path>` | `-c` | path | Use alternative configuration file instead of ai-context.yaml |
+
 ## 📖 Configuration
 
 ### Basic Configuration
