@@ -1,6 +1,7 @@
 ---
 description: Rustコードを実装する開発作業
-
+globs:
+alwaysApply: false
 ---
 
 # rust 固有のルール
