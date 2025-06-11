@@ -1,6 +1,7 @@
 ---
+description:
+globs:
 alwaysApply: true
-
 ---
 
 # 開発環境セットアップ
