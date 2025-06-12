@@ -247,7 +247,7 @@ cargo test --test integration_test
 
 ```bash
 git clone https://github.com/morooka-akira/ai-context-management
-cd ai-context-management
+cd aicm
 cargo build
 cargo test
 ```
