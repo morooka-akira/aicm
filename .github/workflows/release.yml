@@ -118,7 +118,8 @@ jobs:
         with:
           toolchain: 1.78.0
           profile: minimal
-          target: ${{ matrix.target }}
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
       - name: Package artifact
