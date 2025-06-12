@@ -45,7 +45,7 @@ cargo install --git https://github.com/morooka-akira/ai-context-management
 
 # Local build and install
 git clone https://github.com/morooka-akira/ai-context-management
-cd ai-context-management
+cd aicm
 cargo install --path .
 ```
 
