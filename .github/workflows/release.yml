@@ -55,18 +55,20 @@ jobs:
           git config user.email github-actions@github.com
       - name: Display version
         run: |
-          echo "Creating release for version: ${{ github.event.inputs.version }}"
-          echo "Tag will be: v${{ github.event.inputs.version }}"
+          echo "Creating release for version: ${{ inputs.version || github.event.inputs.version }}"
+          echo "Tag will be: v${{ inputs.version || github.event.inputs.version }}"
       - name: Check if tag exists
         run: |
-          if git rev-parse v${{ github.event.inputs.version }} >/dev/null 2>&1; then
-            echo "Tag v${{ github.event.inputs.version }} already exists"
+          VERSION="${{ inputs.version || github.event.inputs.version }}"
+          if git rev-parse v${VERSION} >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists"
             exit 1
           fi
       - name: Tag and push
         run: |
-          git tag v${{ github.event.inputs.version }}
-          git push origin v${{ github.event.inputs.version }}
+          VERSION="${{ inputs.version || github.event.inputs.version }}"
+          git tag v${VERSION}
+          git push origin v${VERSION}
 
   build:
     name: Build binaries
@@ -136,9 +138,9 @@ jobs:
             });
             
             // Find previous release (excluding current version if it exists)
-            const currentVersion = '${{ github.event.inputs.version }}';
+            const currentVersion = '${{ inputs.version || github.event.inputs.version }}';
             const previousRelease = releases.find(release => 
-              release.tag_name !== currentVersion && !release.draft && !release.prerelease
+              release.tag_name !== `v${currentVersion}` && !release.draft && !release.prerelease
             );
             
             let sinceDate;
@@ -193,7 +195,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.event.inputs.version }}
-          name: Release v${{ github.event.inputs.version }}
+          tag_name: v${{ inputs.version || github.event.inputs.version }}
+          name: Release v${{ inputs.version || github.event.inputs.version }}
           body: ${{ steps.generate_notes.outputs.release_notes }}
           files: dist/**/*
