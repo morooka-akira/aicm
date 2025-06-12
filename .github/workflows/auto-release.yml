@@ -46,22 +46,24 @@ jobs:
               const currentVersion = currentVersionMatch[1];
               console.log(`Current version: ${currentVersion}`);
               
-              // Get previous version from Cargo.toml
-              let previousVersion = null;
+              // Get previous version from latest git tag
+              let previousVersion = '0.1.0'; // Default if no tags exist
               try {
-                const previousCargoToml = execSync('git show HEAD~1:Cargo.toml', { encoding: 'utf8' });
-                const previousVersionMatch = previousCargoToml.match(/version\s*=\s*"([^"]+)"/);
-                if (previousVersionMatch) {
-                  previousVersion = previousVersionMatch[1];
-                  console.log(`Previous version: ${previousVersion}`);
+                const latestTag = execSync('git describe --tags --abbrev=0 --match="v*" 2>/dev/null', { encoding: 'utf8' }).trim();
+                if (latestTag) {
+                  // Remove 'v' prefix from tag (e.g., 'v0.1.0' -> '0.1.0')
+                  previousVersion = latestTag.replace(/^v/, '');
+                  console.log(`Latest tag version: ${previousVersion}`);
+                } else {
+                  console.log('No existing tags found, using default: 0.1.0');
                 }
               } catch (error) {
-                console.log('Could not get previous version (possibly first commit)');
+                console.log('No existing tags found, using default: 0.1.0');
               }
               
               // Check if version changed
-              const versionChanged = previousVersion && currentVersion !== previousVersion;
-              console.log(`Version changed: ${versionChanged}`);
+              const versionChanged = currentVersion !== previousVersion;
+              console.log(`Version changed: ${versionChanged} (${previousVersion} -> ${currentVersion})`);
               
               require('fs').appendFileSync(process.env.GITHUB_OUTPUT, `version_changed=${versionChanged ? 'true' : 'false'}\n`);
               require('fs').appendFileSync(process.env.GITHUB_OUTPUT, `new_version=${currentVersion}\n`);
