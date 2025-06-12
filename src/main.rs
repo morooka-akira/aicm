@@ -91,9 +91,7 @@ async fn handle_init() -> Result<()> {
 
 /// Handle generate command
 async fn handle_generate(agent_filter: Option<String>, config_path: Option<String>) -> Result<()> {
-    let config_file = config_path
-        .as_deref()
-        .unwrap_or(DEFAULT_CONFIG_FILE);
+    let config_file = config_path.as_deref().unwrap_or(DEFAULT_CONFIG_FILE);
     println!("Generating context files: {}", config_file);
 
     // Load configuration file
@@ -140,9 +138,7 @@ async fn handle_generate(agent_filter: Option<String>, config_path: Option<Strin
 
 /// Handle validate command
 async fn handle_validate(config_path: Option<String>) -> Result<()> {
-    let config_file = config_path
-        .as_deref()
-        .unwrap_or(DEFAULT_CONFIG_FILE);
+    let config_file = config_path.as_deref().unwrap_or(DEFAULT_CONFIG_FILE);
     println!("Validating configuration file: {}", config_file);
 
     let config = load_config_from_path(config_file)
