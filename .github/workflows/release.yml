@@ -1,0 +1,100 @@
+name: Create Release
+
+permissions:
+  contents: write
+  actions: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semantic version"
+        required: true
+        type: string
+
+jobs:
+  create_tag:
+    name: Create tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Git user
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ github.event.inputs.version }}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Invalid semantic version format"
+            exit 1
+          fi
+      - name: Check if tag exists
+        run: |
+          if git rev-parse ${{ github.event.inputs.version }} >/dev/null 2>&1; then
+            echo "Tag ${{ github.event.inputs.version }} already exists"
+            exit 1
+          fi
+      - name: Tag and push
+        run: |
+          git tag ${{ github.event.inputs.version }}
+          git push origin ${{ github.event.inputs.version }}
+
+  build:
+    name: Build binaries
+    needs: create_tag
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.78.0
+          profile: minimal
+      - name: Run tests
+        run: cargo test --all
+      - name: Build release binary
+        run: cargo build --release
+      - name: Package artifact
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp target/release/aicm.exe dist/aicm-${{ runner.os }}-${{ runner.arch }}.exe
+          else
+            cp target/release/aicm dist/aicm-${{ runner.os }}-${{ runner.arch }}
+          fi
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aicm-${{ runner.os }}-${{ runner.arch }}
+          path: dist/*
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          files: dist/**/*
+
