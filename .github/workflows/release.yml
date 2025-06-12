@@ -190,7 +190,7 @@ jobs:
             releaseNotes += compareUrl;
             
             // Set output for next step
-            core.setOutput('release_notes', releaseNotes);
+            require('fs').appendFileSync(process.env.GITHUB_OUTPUT, `release_notes<<EOF\n${releaseNotes}\nEOF\n`);
             console.log('Release notes generated successfully');
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
