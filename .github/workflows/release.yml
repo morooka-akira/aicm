@@ -93,15 +93,17 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
+          ARCH=$(uname -m)
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp target/release/aicm.exe dist/aicm-${{ runner.os }}-${{ runner.arch }}.exe
+            cp target/release/aicm.exe dist/aicm-${{ runner.os }}-${ARCH}.exe
           else
-            cp target/release/aicm dist/aicm-${{ runner.os }}-${{ runner.arch }}
+            cp target/release/aicm dist/aicm-${{ runner.os }}-${ARCH}
           fi
+          echo "ARCH=${ARCH}" >> $GITHUB_ENV
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: aicm-${{ runner.os }}-${{ runner.arch }}
+          name: aicm-${{ runner.os }}-${{ env.ARCH }}
           path: dist/*
 
   release:
