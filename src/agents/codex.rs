@@ -1,32 +1,32 @@
 /*!
  * AI Context Management Tool - Codex Agent
  *
- * OpenAI Codex エージェントの実装
- * AGENTS.md ファイルを出力（merged モードのみ対応）
+ * OpenAI Codex agent implementation
+ * Outputs AGENTS.md file (supports merged mode only)
  */
 
 use crate::core::MarkdownMerger;
 use crate::types::{AIContextConfig, GeneratedFile};
 use anyhow::Result;
 
-/// Codex エージェント
+/// Codex agent
 pub struct CodexAgent {
     config: AIContextConfig,
 }
 
 impl CodexAgent {
-    /// 新しい Codex エージェントを作成
+    /// Create a new Codex agent
     pub fn new(config: AIContextConfig) -> Self {
         Self { config }
     }
 
-    /// Codex 用ファイルを生成（merged モードのみ）
+    /// Generate files for Codex (merged mode only)
     pub async fn generate(&self) -> Result<Vec<GeneratedFile>> {
         let merger = MarkdownMerger::new(self.config.clone());
         self.generate_merged(&merger).await
     }
 
-    /// 統合モード：1つのファイルに結合して AGENTS.md として出力
+    /// Merged mode: merge into one file and output as AGENTS.md
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let content = merger.merge_all_with_options(Some("codex")).await?;
         let output_path = self.get_output_path();
@@ -34,7 +34,7 @@ impl CodexAgent {
         Ok(vec![GeneratedFile::new(output_path, content)])
     }
 
-    /// 出力パスを取得（プロジェクトルートの AGENTS.md）
+    /// Get output path (AGENTS.md in project root)
     fn get_output_path(&self) -> String {
         "AGENTS.md".to_string()
     }
@@ -50,8 +50,8 @@ mod tests {
     fn create_test_config(base_dir: &str) -> AIContextConfig {
         AIContextConfig {
             version: "1.0".to_string(),
-            output_mode: Some(OutputMode::Merged), // Codex は merged のみ
-            include_filenames: Some(true),         // テスト用にヘッダーを有効化
+            output_mode: Some(OutputMode::Merged), // Codex supports merged only
+            include_filenames: Some(true),         // Enable headers for testing
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
@@ -66,8 +66,8 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, "AGENTS.md");
-        // 空のディレクトリの場合は空のコンテンツでも正常
-        // （MarkdownMerger が空のディレクトリに対して空文字列を返すため）
+        // Empty directory results in empty content but is normal
+        // (MarkdownMerger returns empty string for empty directory)
     }
 
     #[tokio::test]
@@ -75,7 +75,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test file
         fs::write(docs_path.join("test.md"), "# Test Content\nThis is a test.")
             .await
             .unwrap();
@@ -87,13 +87,13 @@ mod tests {
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, "AGENTS.md");
 
-        // ファイル名のヘッダーが含まれることを確認
+        // Confirm filename header is included
         assert!(files[0].content.contains("# test.md"));
-        // 元のコンテンツが含まれることを確認
+        // Confirm original content is included
         assert!(files[0].content.contains("# Test Content"));
         assert!(files[0].content.contains("This is a test."));
 
-        // 純粋な Markdown（frontmatter なし）であることを確認
+        // Confirm it's pure Markdown (no frontmatter)
         assert!(!files[0].content.starts_with("---"));
     }
 
@@ -102,7 +102,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // 複数のテスト用ファイルを作成
+        // Create multiple test files
         fs::write(docs_path.join("file1.md"), "Content 1")
             .await
             .unwrap();
@@ -117,11 +117,11 @@ mod tests {
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, "AGENTS.md");
 
-        // 両方のファイルの内容が含まれることを確認
+        // Confirm both file contents are included
         assert!(files[0].content.contains("Content 1"));
         assert!(files[0].content.contains("Content 2"));
 
-        // ファイル名のヘッダーが含まれることを確認
+        // Confirm filename headers are included
         assert!(files[0].content.contains("# file1.md"));
         assert!(files[0].content.contains("# file2.md"));
     }
@@ -131,7 +131,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // サブディレクトリを作成
+        // Create subdirectory
         let sub_dir = docs_path.join("subdir");
         fs::create_dir(&sub_dir).await.unwrap();
         fs::write(sub_dir.join("nested.md"), "Nested content")
@@ -145,7 +145,7 @@ mod tests {
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, "AGENTS.md");
 
-        // サブディレクトリのファイルも含まれることを確認
+        // Confirm subdirectory files are also included
         assert!(files[0].content.contains("Nested content"));
         assert!(files[0].content.contains("# subdir/nested.md"));
     }
@@ -164,7 +164,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test file
         fs::write(docs_path.join("test.md"), "# Test\nContent here")
             .await
             .unwrap();
@@ -175,12 +175,12 @@ mod tests {
         let files = agent.generate().await.unwrap();
         let content = &files[0].content;
 
-        // 純粋な Markdown であることを確認（YAML frontmatter なし）
+        // Confirm it's pure Markdown (no YAML frontmatter)
         assert!(!content.starts_with("---"));
         assert!(!content.contains("description:"));
         assert!(!content.contains("alwaysApply:"));
 
-        // 内容は含まれていることを確認
+        // Confirm content is included
         assert!(content.contains("# Test"));
         assert!(content.contains("Content here"));
     }
@@ -190,19 +190,19 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test file
         fs::write(docs_path.join("test.md"), "Test content")
             .await
             .unwrap();
 
-        // Split モードで設定しても Codex は merged で動作することを確認
+        // Confirm Codex operates in merged mode even when Split mode is configured
         let mut config = create_test_config(&docs_path.to_string_lossy());
         config.output_mode = Some(OutputMode::Split);
 
         let agent = CodexAgent::new(config);
         let files = agent.generate().await.unwrap();
 
-        // Split モードを指定しても 1 つのファイルのみ生成される
+        // Only one file is generated even when Split mode is specified
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, "AGENTS.md");
         assert!(files[0].content.contains("Test content"));

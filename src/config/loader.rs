@@ -1,7 +1,7 @@
 /*!
  * AI Context Management Tool - Configuration Loader (Simplified)
  *
- * シンプル化された設定ファイル読み込み機能
+ * Simplified configuration file loading functionality
  */
 
 use crate::config::error::ConfigError;
@@ -9,11 +9,11 @@ use crate::types::AIContextConfig;
 use std::path::Path;
 use tokio::fs;
 
-/// 設定ファイルローダー（シンプル版）
+/// Configuration file loader (simplified version)
 pub struct ConfigLoader;
 
 impl ConfigLoader {
-    /// 指定されたパスから設定ファイルを読み込み
+    /// Load configuration file from specified path
     pub async fn load<P: AsRef<Path>>(path: P) -> Result<AIContextConfig, ConfigError> {
         let path = path.as_ref();
 
@@ -34,14 +34,14 @@ impl ConfigLoader {
         Ok(config)
     }
 
-    /// デフォルト設定を作成して保存
+    /// Create and save default configuration
     pub async fn create_default<P: AsRef<Path>>(path: P) -> Result<AIContextConfig, ConfigError> {
         let config = AIContextConfig::default();
         Self::save(path, &config).await?;
         Ok(config)
     }
 
-    /// 設定ファイルを保存
+    /// Save configuration file
     pub async fn save<P: AsRef<Path>>(
         path: P,
         config: &AIContextConfig,
@@ -56,17 +56,17 @@ impl ConfigLoader {
         Ok(())
     }
 
-    /// 設定の基本的な検証
+    /// Basic configuration validation
     fn validate_config(config: &AIContextConfig) -> Result<(), ConfigError> {
         if config.version.is_empty() {
             return Err(ConfigError::ValidationError {
-                message: "バージョンが指定されていません".to_string(),
+                message: "Version is not specified".to_string(),
             });
         }
 
         if config.base_docs_dir.is_empty() {
             return Err(ConfigError::ValidationError {
-                message: "base_docs_dirが指定されていません".to_string(),
+                message: "base_docs_dir is not specified".to_string(),
             });
         }
 
@@ -149,7 +149,7 @@ agents: not_an_object
         assert!(result.is_err());
 
         if let Err(ConfigError::ValidationError { message }) = result {
-            assert!(message.contains("バージョンが指定されていません"));
+            assert!(message.contains("Version is not specified"));
         } else {
             panic!("Expected ValidationError");
         }
@@ -166,7 +166,7 @@ agents: not_an_object
         assert!(result.is_err());
 
         if let Err(ConfigError::ValidationError { message }) = result {
-            assert!(message.contains("base_docs_dirが指定されていません"));
+            assert!(message.contains("base_docs_dir is not specified"));
         } else {
             panic!("Expected ValidationError");
         }
@@ -179,7 +179,7 @@ agents: not_an_object
 
         let config = ConfigLoader::create_default(&config_path).await.unwrap();
 
-        // デフォルト値を確認
+        // Check default values
         assert_eq!(config.version, "1.0");
         assert_eq!(config.get_global_output_mode(), OutputMode::Merged);
         assert_eq!(config.base_docs_dir, "./ai-docs");
@@ -188,7 +188,7 @@ agents: not_an_object
         assert!(!config.agents.github.is_enabled());
         assert!(!config.agents.claude.is_enabled());
 
-        // ファイルが実際に作成されたかを確認
+        // Confirm file was actually created
         assert!(config_path.exists());
     }
 
@@ -201,15 +201,15 @@ agents: not_an_object
         original_config.agents.cursor = crate::types::CursorConfig::Simple(true);
         original_config.agents.claude = crate::types::ClaudeConfig::Simple(true);
 
-        // 保存
+        // Save
         ConfigLoader::save(&config_path, &original_config)
             .await
             .unwrap();
 
-        // 読み込み
+        // Load
         let loaded_config = ConfigLoader::load(&config_path).await.unwrap();
 
-        // 内容が一致することを確認
+        // Confirm contents match
         assert_eq!(loaded_config.version, original_config.version);
         assert_eq!(loaded_config.base_docs_dir, original_config.base_docs_dir);
         assert_eq!(loaded_config.agents.cursor, original_config.agents.cursor);

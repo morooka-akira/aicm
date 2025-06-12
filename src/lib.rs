@@ -1,7 +1,7 @@
 /*!
  * AI Context Management Tool - Library
  *
- * このライブラリは各種AIエージェント用のコンテキスト生成機能を提供します。
+ * This library provides context generation functions for various AI agents.
  */
 
 pub mod agents;

@@ -1,7 +1,7 @@
 /*!
  * AI Context Management Tool - Type Definitions
  *
- * このモジュールは設定ファイルと各エージェント用の型定義を提供します。
+ * This module provides type definitions for configuration files and each agent.
  */
 
 pub mod agent;

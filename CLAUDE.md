@@ -2,7 +2,10 @@
 
 このファイルは、このリポジトリでコードを扱う際に Claude Code (claude.ai/code)、Cline, Corsor, Github Copilot、Codex など各種 AI コードエージェント にガイダンスを提供します。
 
-**必ず日本語で対応すること**
+# 言語
+
+- **エージェントのやり取りは必ず日本語で対応すること**
+- **rust コード上のコメント及び、コマンドの出力は、英語で記載すること**
 
 ## プロジェクト概要
 
@@ -166,10 +169,6 @@ cargo tarpaulin --out html
 # 統合テスト実行
 cargo test --test integration_test
 ```
-
-## エラーハンドリング
-
-- anyhow・thiserror による適切なエラー処理を行うこと
 
 # rust 固有のルール
 
