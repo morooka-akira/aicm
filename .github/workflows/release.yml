@@ -61,14 +61,14 @@ jobs:
           fi
       - name: Check if tag exists
         run: |
-          if git rev-parse ${{ github.event.inputs.version }} >/dev/null 2>&1; then
-            echo "Tag ${{ github.event.inputs.version }} already exists"
+          if git rev-parse v${{ github.event.inputs.version }} >/dev/null 2>&1; then
+            echo "Tag v${{ github.event.inputs.version }} already exists"
             exit 1
           fi
       - name: Tag and push
         run: |
-          git tag ${{ github.event.inputs.version }}
-          git push origin ${{ github.event.inputs.version }}
+          git tag v${{ github.event.inputs.version }}
+          git push origin v${{ github.event.inputs.version }}
 
   build:
     name: Build binaries
@@ -195,7 +195,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.version }}
-          name: Release ${{ github.event.inputs.version }}
+          tag_name: v${{ github.event.inputs.version }}
+          name: Release v${{ github.event.inputs.version }}
           body: ${{ steps.generate_notes.outputs.release_notes }}
           files: dist/**/*
