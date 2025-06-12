@@ -39,7 +39,8 @@ impl MarkdownMerger {
                 let relative_path = file_path
                     .strip_prefix(&self.config.base_docs_dir)
                     .unwrap_or(&file_path)
-                    .to_string_lossy();
+                    .to_string_lossy()
+                    .replace('\\', "/"); // Normalize path separators for cross-platform compatibility
 
                 merged_content.push_str(&format!("# {}\n\n{}\n\n", relative_path, content.trim()));
             }
@@ -74,7 +75,8 @@ impl MarkdownMerger {
                     let relative_path = file_path
                         .strip_prefix(&self.config.base_docs_dir)
                         .unwrap_or(&file_path)
-                        .to_string_lossy();
+                        .to_string_lossy()
+                        .replace('\\', "/"); // Normalize path separators for cross-platform compatibility
 
                     merged_content.push_str(&format!(
                         "# {}\n\n{}\n\n",
@@ -108,7 +110,7 @@ impl MarkdownMerger {
                     .strip_prefix(&self.config.base_docs_dir)
                     .unwrap_or(&file_path)
                     .to_string_lossy()
-                    .to_string();
+                    .replace('\\', "/"); // Normalize path separators for cross-platform compatibility
 
                 files.push((relative_path, content));
             }
