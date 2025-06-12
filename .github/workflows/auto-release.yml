@@ -39,7 +39,7 @@ jobs:
               
               if (!currentVersionMatch) {
                 console.log('Could not parse current version from Cargo.toml');
-                core.setOutput('version_changed', 'false');
+                require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'version_changed=false\n');
                 return;
               }
               
@@ -63,12 +63,12 @@ jobs:
               const versionChanged = previousVersion && currentVersion !== previousVersion;
               console.log(`Version changed: ${versionChanged}`);
               
-              core.setOutput('version_changed', versionChanged ? 'true' : 'false');
-              core.setOutput('new_version', currentVersion);
+              require('fs').appendFileSync(process.env.GITHUB_OUTPUT, `version_changed=${versionChanged ? 'true' : 'false'}\n`);
+              require('fs').appendFileSync(process.env.GITHUB_OUTPUT, `new_version=${currentVersion}\n`);
               
             } catch (error) {
               console.error('Error checking version change:', error);
-              core.setOutput('version_changed', 'false');
+              require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'version_changed=false\n');
             }
       
       - name: Check if tag already exists
@@ -90,4 +90,4 @@ jobs:
     if: needs.check_version_change.outputs.version_changed == 'true' && needs.check_version_change.outputs.tag_exists == 'false'
     uses: ./.github/workflows/release.yml
     with:
-      version: v${{ needs.check_version_change.outputs.new_version }}
+      version: ${{ needs.check_version_change.outputs.new_version }}
