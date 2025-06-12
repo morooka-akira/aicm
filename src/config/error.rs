@@ -1,34 +1,34 @@
 /*!
  * AI Context Management Tool - Configuration Error Types (Simplified)
  *
- * シンプル化されたエラー型定義
+ * Simplified error type definitions
  */
 
 use thiserror::Error;
 
-/// 設定関連のエラー型（シンプル版）
+/// Configuration-related error types (simplified version)
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    /// ファイルが見つからない
-    #[error("設定ファイルが見つかりません: {path}")]
+    /// File not found
+    #[error("Configuration file not found: {path}")]
     FileNotFound { path: String },
 
-    /// ファイル読み書きエラー
-    #[error("ファイルの読み書きでエラーが発生しました")]
+    /// File I/O error
+    #[error("File I/O error occurred")]
     IoError {
         #[from]
         source: std::io::Error,
     },
 
-    /// YAML解析エラー
-    #[error("YAMLファイルの解析でエラーが発生しました")]
+    /// YAML parsing error
+    #[error("YAML file parsing error occurred")]
     YamlError {
         #[from]
         source: serde_yaml::Error,
     },
 
-    /// 設定値検証エラー
-    #[error("設定値が無効です: {message}")]
+    /// Configuration validation error
+    #[error("Invalid configuration value: {message}")]
     ValidationError { message: String },
 }
 
@@ -43,17 +43,17 @@ mod tests {
         let error = ConfigError::FileNotFound {
             path: "test.yaml".to_string(),
         };
-        assert!(error.to_string().contains("設定ファイルが見つかりません"));
+        assert!(error.to_string().contains("Configuration file not found"));
         assert!(error.to_string().contains("test.yaml"));
     }
 
     #[test]
     fn test_validation_error() {
         let error = ConfigError::ValidationError {
-            message: "バージョンが指定されていません".to_string(),
+            message: "Version is not specified".to_string(),
         };
-        assert!(error.to_string().contains("設定値が無効です"));
-        assert!(error.to_string().contains("バージョンが指定されていません"));
+        assert!(error.to_string().contains("Invalid configuration value"));
+        assert!(error.to_string().contains("Version is not specified"));
     }
 
     #[test]
@@ -61,9 +61,7 @@ mod tests {
         let io_error = IoError::new(ErrorKind::PermissionDenied, "Permission denied");
         let config_error = ConfigError::IoError { source: io_error };
 
-        assert!(config_error
-            .to_string()
-            .contains("ファイルの読み書きでエラーが発生しました"));
+        assert!(config_error.to_string().contains("File I/O error occurred"));
     }
 
     #[test]
@@ -74,7 +72,7 @@ mod tests {
 
         assert!(config_error
             .to_string()
-            .contains("YAMLファイルの解析でエラーが発生しました"));
+            .contains("YAML file parsing error occurred"));
     }
 
     #[test]
@@ -92,7 +90,7 @@ mod tests {
         let io_error = IoError::new(ErrorKind::NotFound, "File not found");
         let config_error = ConfigError::IoError { source: io_error };
 
-        // エラーソースが適切に設定されていることを確認
+        // Confirm error source is properly set
         assert!(config_error.source().is_some());
     }
 }

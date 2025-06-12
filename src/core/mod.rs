@@ -1,7 +1,7 @@
 /*!
  * AI Context Management Tool - Core Module
  *
- * このモジュールはコア機能を提供します。
+ * This module provides core functions.
  */
 
 pub mod markdown_merger;

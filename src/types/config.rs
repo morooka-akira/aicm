@@ -1,235 +1,235 @@
 /*!
  * AI Context Management Tool - Configuration Types (Simplified)
  *
- * シンプル化された設定ファイル（ai-context.yaml）の型定義
+ * Simplified configuration file (ai-context.yaml) type definitions
  */
 
 use serde::{Deserialize, Serialize};
 
-/// メインの設定ファイル構造（シンプル版）
+/// Main configuration file structure (simplified version)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AIContextConfig {
-    /// 設定ファイルのバージョン
+    /// Configuration file version
     pub version: String,
-    /// 出力モード: 統合 or 分割（オプショナル、デフォルト：merged）
+    /// Output mode: merged or split (optional, default: merged)
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
-    /// merged モード時にファイル名ヘッダーを含めるか（デフォルト：false）
+    /// Whether to include filename headers in merged mode (default: false)
     #[serde(default)]
     pub include_filenames: Option<bool>,
-    /// ベースとなるドキュメントディレクトリ
+    /// Base documentation directory
     pub base_docs_dir: String,
-    /// エージェント有効/無効設定
+    /// Agent enable/disable settings
     pub agents: AgentConfig,
 }
 
-/// 出力モードの種類
+/// Output mode types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum OutputMode {
-    /// 全ファイルを1つに結合
+    /// Merge all files into one
     Merged,
-    /// ファイルごとに分割
+    /// Split by file
     Split,
 }
 
-/// エージェント有効/無効設定（拡張版）
+/// Agent enable/disable settings (extended version)
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct AgentConfig {
-    /// Cursor エージェント
+    /// Cursor agent
     #[serde(default)]
     pub cursor: CursorConfig,
-    /// Cline エージェント
+    /// Cline agent
     #[serde(default)]
     pub cline: ClineConfig,
-    /// GitHub Copilot エージェント
+    /// GitHub Copilot agent
     #[serde(default)]
     pub github: GitHubConfig,
-    /// Claude Code エージェント
+    /// Claude Code agent
     #[serde(default)]
     pub claude: ClaudeConfig,
-    /// OpenAI Codex エージェント
+    /// OpenAI Codex agent
     #[serde(default)]
     pub codex: CodexConfig,
 }
 
-/// Cursor エージェント設定
+/// Cursor agent configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum CursorConfig {
-    /// シンプル設定（後方互換性）
+    /// Simple configuration (backward compatibility)
     Simple(bool),
-    /// 詳細設定
+    /// Detailed configuration
     Advanced(CursorAgentConfig),
 }
 
-/// Cline エージェント設定
+/// Cline agent configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum ClineConfig {
-    /// シンプル設定（後方互換性）
+    /// Simple configuration (backward compatibility)
     Simple(bool),
-    /// 詳細設定
+    /// Detailed configuration
     Advanced(ClineAgentConfig),
 }
 
-/// GitHub エージェント設定
+/// GitHub agent configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum GitHubConfig {
-    /// シンプル設定（後方互換性）
+    /// Simple configuration (backward compatibility)
     Simple(bool),
-    /// 詳細設定
+    /// Detailed configuration
     Advanced(GitHubAgentConfig),
 }
 
-/// Claude エージェント設定
+/// Claude agent configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum ClaudeConfig {
-    /// シンプル設定（後方互換性）
+    /// Simple configuration (backward compatibility)
     Simple(bool),
-    /// 詳細設定
+    /// Detailed configuration
     Advanced(ClaudeAgentConfig),
 }
 
-/// Codex エージェント設定
+/// Codex agent configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum CodexConfig {
-    /// シンプル設定（後方互換性）
+    /// Simple configuration (backward compatibility)
     Simple(bool),
-    /// 詳細設定
+    /// Detailed configuration
     Advanced(CodexAgentConfig),
 }
 
-/// Cursor エージェント詳細設定
+/// Cursor agent detailed configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CursorAgentConfig {
-    /// エージェント有効/無効（デフォルト：true）
+    /// Agent enable/disable (default: true)
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// 出力モード（オプショナル、グローバル設定を上書き）
+    /// Output mode (optional, overrides global setting)
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
-    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
-    /// splitモード時の詳細設定（オプショナル）
+    /// Detailed settings for split mode (optional)
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub split_config: Option<CursorSplitConfig>,
 }
 
-/// Cursor splitモード設定
+/// Cursor split mode configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CursorSplitConfig {
-    /// ルール配列
+    /// Rule array
     #[serde(default)]
     pub rules: Vec<CursorSplitRule>,
 }
 
-/// GitHub splitモード設定
+/// GitHub split mode configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GitHubSplitConfig {
-    /// ルール配列
+    /// Rule array
     #[serde(default)]
     pub rules: Vec<GitHubSplitRule>,
 }
 
-/// Cursor splitモード時のルール設定
+/// Cursor split mode rule configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CursorSplitRule {
-    /// 対象となるMarkdownファイル名パターン
+    /// Target Markdown filename patterns
     pub file_patterns: Vec<String>,
-    /// Always ルール用（alwaysApply: true）
+    /// For Always rule (alwaysApply: true)
     #[serde(default, rename = "alwaysApply")]
     pub always_apply: Option<bool>,
-    /// Auto Attached ルール用（globs設定）
+    /// For Auto Attached rule (globs setting)
     #[serde(default)]
     pub globs: Option<Vec<String>>,
-    /// Agent Requested ルール用（description設定）
+    /// For Agent Requested rule (description setting)
     #[serde(default)]
     pub description: Option<String>,
-    /// Manual ルール用（manual: true）
+    /// For Manual rule (manual: true)
     #[serde(default)]
     pub manual: Option<bool>,
 }
 
-/// GitHub splitモード時のルール設定
+/// GitHub split mode rule configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GitHubSplitRule {
-    /// 対象となるMarkdownファイル名パターン
+    /// Target Markdown filename patterns
     pub file_patterns: Vec<String>,
-    /// applyTo オプション用のファイルパターン（globパターン）
+    /// File patterns for applyTo option (glob patterns)
     #[serde(default)]
     pub apply_to: Option<Vec<String>>,
 }
 
-/// Cline エージェント詳細設定
+/// Cline agent detailed configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClineAgentConfig {
-    /// エージェント有効/無効（デフォルト：true）
+    /// Agent enable/disable (default: true)
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// 出力モード（オプショナル、グローバル設定を上書き）
+    /// Output mode (optional, overrides global setting)
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
-    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
 }
 
-/// GitHub エージェント詳細設定
+/// GitHub agent detailed configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GitHubAgentConfig {
-    /// エージェント有効/無効（デフォルト：true）
+    /// Agent enable/disable (default: true)
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// 出力モード（オプショナル、グローバル設定を上書き）
+    /// Output mode (optional, overrides global setting)
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
-    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
-    /// splitモード時の詳細設定（オプショナル）
+    /// Detailed settings for split mode (optional)
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub split_config: Option<GitHubSplitConfig>,
 }
 
-/// Claude エージェント詳細設定
+/// Claude agent detailed configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClaudeAgentConfig {
-    /// エージェント有効/無効（デフォルト：true）
+    /// Agent enable/disable (default: true)
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// 出力モード（オプショナル、Claude は常に merged）
+    /// Output mode (optional, Claude is always merged)
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
-    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
 }
 
-/// Codex エージェント詳細設定
+/// Codex agent detailed configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CodexAgentConfig {
-    /// エージェント有効/無効（デフォルト：true）
+    /// Agent enable/disable (default: true)
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// 出力モード（オプショナル、Codex は常に merged）
+    /// Output mode (optional, Codex is always merged)
     #[serde(default)]
     pub output_mode: Option<OutputMode>,
-    /// merged モード時にファイル名ヘッダーを含めるか（オプショナル、グローバル設定を上書き）
+    /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
 }
 
-/// デフォルト値: true
+/// Default value: true
 fn default_true() -> bool {
     true
 }
 
-/// デフォルトのエージェント設定
+/// Default agent configurations
 impl Default for CursorConfig {
     fn default() -> Self {
         Self::Simple(false)
@@ -264,8 +264,8 @@ impl Default for AIContextConfig {
     fn default() -> Self {
         Self {
             version: "1.0".to_string(),
-            output_mode: Some(OutputMode::Merged), // デフォルトは merged
-            include_filenames: Some(false),        // デフォルトは false
+            output_mode: Some(OutputMode::Merged), // Default is merged
+            include_filenames: Some(false),        // Default is false
             base_docs_dir: "./ai-docs".to_string(),
             agents: AgentConfig::default(),
         }
@@ -273,7 +273,7 @@ impl Default for AIContextConfig {
 }
 
 impl AIContextConfig {
-    /// 有効なエージェントのリストを取得
+    /// Get list of enabled agents
     pub fn enabled_agents(&self) -> Vec<String> {
         let mut agents = Vec::new();
         if self.agents.cursor.is_enabled() {
@@ -294,13 +294,13 @@ impl AIContextConfig {
         agents
     }
 
-    /// グローバル出力モードを取得（デフォルト：merged）
+    /// Get global output mode (default: merged)
     pub fn get_global_output_mode(&self) -> OutputMode {
         self.output_mode.clone().unwrap_or(OutputMode::Merged)
     }
 
-    /// 指定されたエージェントの有効な出力モードを取得
-    /// 優先順位: エージェント個別設定 > グローバル設定 > デフォルト（merged）
+    /// Get effective output mode for specified agent
+    /// Priority: agent individual setting > global setting > default (merged)
     pub fn get_effective_output_mode(&self, agent: &str) -> OutputMode {
         match agent {
             "cursor" => self
@@ -318,14 +318,14 @@ impl AIContextConfig {
                 .github
                 .get_output_mode()
                 .unwrap_or_else(|| self.get_global_output_mode()),
-            "claude" => OutputMode::Merged, // Claude は常に merged
-            "codex" => OutputMode::Merged,  // Codex は常に merged
+            "claude" => OutputMode::Merged, // Claude is always merged
+            "codex" => OutputMode::Merged,  // Codex is always merged
             _ => self.get_global_output_mode(),
         }
     }
 
-    /// 指定されたエージェントの有効な include_filenames 設定を取得
-    /// 優先順位: エージェント個別設定 > グローバル設定 > デフォルト（false）
+    /// Get effective include_filenames setting for specified agent
+    /// Priority: agent individual setting > global setting > default (false)
     pub fn get_effective_include_filenames(&self, agent: &str) -> bool {
         match agent {
             "cursor" => self
@@ -358,13 +358,13 @@ impl AIContextConfig {
     }
 }
 
-/// エージェント設定の共通トレイト
+/// Common trait for agent configurations
 pub trait AgentConfigTrait {
-    /// エージェントが有効かどうかを取得
+    /// Get whether agent is enabled
     fn is_enabled(&self) -> bool;
-    /// エージェント個別の出力モードを取得
+    /// Get agent individual output mode
     fn get_output_mode(&self) -> Option<OutputMode>;
-    /// エージェント個別の include_filenames 設定を取得
+    /// Get agent individual include_filenames setting
     fn get_include_filenames(&self) -> Option<bool>;
 }
 
@@ -438,7 +438,7 @@ impl AgentConfigTrait for GitHubConfig {
 }
 
 impl GitHubConfig {
-    /// 詳細設定を取得
+    /// Get detailed configuration
     pub fn get_advanced_config(&self) -> Option<&GitHubAgentConfig> {
         match self {
             Self::Simple(_) => None,
@@ -556,10 +556,10 @@ mod tests {
     fn test_global_output_mode() {
         let mut config = AIContextConfig::default();
 
-        // デフォルト（None）の場合は Merged
+        // Default (None) case uses Merged
         assert_eq!(config.get_global_output_mode(), OutputMode::Merged);
 
-        // 明示的に設定した場合
+        // Explicitly set
         config.output_mode = Some(OutputMode::Split);
         assert_eq!(config.get_global_output_mode(), OutputMode::Split);
     }
@@ -572,7 +572,7 @@ mod tests {
         };
         config.agents.cursor = CursorConfig::Simple(true);
 
-        // エージェント個別設定なし → グローバル設定を使用
+        // No agent individual settings, use global setting
         assert_eq!(
             config.get_effective_output_mode("cursor"),
             OutputMode::Split
@@ -592,7 +592,7 @@ mod tests {
             split_config: None,
         });
 
-        // エージェント個別設定がグローバル設定を上書き
+        // Agent individual settings override global setting
         assert_eq!(
             config.get_effective_output_mode("cursor"),
             OutputMode::Merged
@@ -608,10 +608,10 @@ mod tests {
         config.agents.claude = ClaudeConfig::Advanced(ClaudeAgentConfig {
             enabled: true,
             include_filenames: None,
-            output_mode: Some(OutputMode::Split), // 設定されていても無視される
+            output_mode: Some(OutputMode::Split), // Set but ignored
         });
 
-        // Claude は常に merged
+        // Claude is always merged
         assert_eq!(
             config.get_effective_output_mode("claude"),
             OutputMode::Merged
@@ -627,10 +627,10 @@ mod tests {
         config.agents.codex = CodexConfig::Advanced(CodexAgentConfig {
             enabled: true,
             include_filenames: None,
-            output_mode: Some(OutputMode::Split), // 設定されていても無視される
+            output_mode: Some(OutputMode::Split), // Set but ignored
         });
 
-        // Codex は常に merged
+        // Codex is always merged
         assert_eq!(
             config.get_effective_output_mode("codex"),
             OutputMode::Merged
@@ -641,7 +641,7 @@ mod tests {
     fn test_effective_output_mode_default_fallback() {
         let config = AIContextConfig::default();
 
-        // グローバル設定もエージェント個別設定もなし → デフォルト（merged）
+        // No global setting or agent individual settings → Default (merged)
         assert_eq!(
             config.get_effective_output_mode("cursor"),
             OutputMode::Merged
@@ -689,13 +689,13 @@ mod tests {
         assert!(deserialized.is_enabled());
         assert_eq!(deserialized.get_output_mode(), Some(OutputMode::Split));
 
-        // split_config: null が出力されないことを確認
+        // split_config: null not output
         assert!(!yaml.contains("split_config"));
     }
 
     #[test]
     fn test_backward_compatibility_parsing() {
-        // 既存の設定形式をパース
+        // Parse existing configuration format
         let yaml = r#"
 version: "1.0"
 output_mode: split
@@ -717,7 +717,7 @@ agents:
         assert!(config.agents.github.is_enabled());
         assert!(!config.agents.claude.is_enabled());
 
-        // 後方互換性：エージェント個別設定なし → グローバル設定を使用
+        // Backward compatibility: No agent individual settings, use global setting
         assert_eq!(
             config.get_effective_output_mode("cursor"),
             OutputMode::Split
@@ -730,7 +730,7 @@ agents:
 
     #[test]
     fn test_new_format_parsing() {
-        // 新しい設定形式をパース
+        // Parse new configuration format
         let yaml = r#"
 version: "1.0"
 output_mode: split
@@ -749,31 +749,31 @@ agents:
 
         assert!(config.agents.cursor.is_enabled());
         assert!(config.agents.cline.is_enabled());
-        assert!(config.agents.github.is_enabled()); // enabled のデフォルトは true
+        assert!(config.agents.github.is_enabled()); // enabled default is true
         assert!(!config.agents.claude.is_enabled());
 
-        // 有効な出力モードの確認
+        // Effective output mode confirmation
         assert_eq!(
             config.get_effective_output_mode("cursor"),
             OutputMode::Split
-        ); // グローバル設定
+        ); // Global setting
         assert_eq!(
             config.get_effective_output_mode("cline"),
             OutputMode::Merged
-        ); // 個別設定
+        ); // Individual setting
         assert_eq!(
             config.get_effective_output_mode("github"),
             OutputMode::Split
-        ); // 個別設定
+        ); // Individual setting
         assert_eq!(
             config.get_effective_output_mode("claude"),
             OutputMode::Merged
-        ); // 常に merged
+        ); // Always merged
     }
 
     #[test]
     fn test_mixed_format_parsing() {
-        // 混在形式のパース
+        // Parse mixed format
         let yaml = r#"
 version: "1.0"
 base_docs_dir: "./ai-context"
@@ -789,7 +789,7 @@ agents:
 
         let config: AIContextConfig = serde_yaml::from_str(yaml).unwrap();
 
-        // グローバル output_mode がない場合はデフォルト（merged）
+        // Global output_mode not present, use default (merged)
         assert_eq!(config.get_global_output_mode(), OutputMode::Merged);
 
         assert!(config.agents.cursor.is_enabled());
@@ -797,18 +797,18 @@ agents:
         assert!(config.agents.github.is_enabled());
         assert!(config.agents.claude.is_enabled());
 
-        // 有効な出力モードの確認
+        // Effective output mode confirmation
         assert_eq!(
             config.get_effective_output_mode("cursor"),
             OutputMode::Merged
-        ); // グローバルデフォルト
+        ); // Global default
         assert_eq!(
             config.get_effective_output_mode("github"),
             OutputMode::Split
-        ); // 個別設定
+        ); // Individual setting
         assert_eq!(
             config.get_effective_output_mode("claude"),
             OutputMode::Merged
-        ); // 常に merged
+        ); // Always merged
     }
 }

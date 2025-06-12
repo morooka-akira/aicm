@@ -37,7 +37,3 @@ cargo tarpaulin --out html
 # 統合テスト実行
 cargo test --test integration_test
 ```
-
-## エラーハンドリング
-
-- anyhow・thiserror による適切なエラー処理を行うこと

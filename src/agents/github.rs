@@ -1,12 +1,12 @@
 /*!
  * AI Context Management Tool - GitHub Copilot Agent
  *
- * GitHub Copilot用のコンテキストファイル生成エージェント
- * 仕様: https://code.visualstudio.com/docs/copilot/copilot-customization
+ * Context file generation agent for GitHub Copilot
+ * Specification: https://code.visualstudio.com/docs/copilot/copilot-customization
  *
- * ファイル命名規則:
- * - 統合モード: .github/copilot-instructions.md
- * - 分割モード: .github/instructions/ 配下にmdファイルを生成
+ * File naming conventions:
+ * - Merged mode: .github/copilot-instructions.md
+ * - Split mode: Generate md files under .github/instructions/
  */
 
 use crate::core::MarkdownMerger;
@@ -14,14 +14,14 @@ use crate::types::{AIContextConfig, GeneratedFile, GitHubSplitRule, OutputMode};
 use anyhow::Result;
 use tokio::fs;
 
-/// GitHub Copilotエージェント
+/// GitHub Copilot agent
 pub struct GitHubAgent {
     config: AIContextConfig,
     base_dir: Option<String>,
 }
 
 impl GitHubAgent {
-    /// 新しいGitHub Copilotエージェントを作成
+    /// Create a new GitHub Copilot agent
     pub fn new(config: AIContextConfig) -> Self {
         Self {
             config,
@@ -29,7 +29,7 @@ impl GitHubAgent {
         }
     }
 
-    /// ベースディレクトリ指定でGitHub Copilotエージェントを作成
+    /// Create GitHub Copilot agent with specified base directory
     #[cfg(test)]
     pub fn new_with_base_dir(config: AIContextConfig, base_dir: String) -> Self {
         Self {
@@ -38,7 +38,7 @@ impl GitHubAgent {
         }
     }
 
-    /// GitHub Copilot用ファイルを生成
+    /// Generate files for GitHub Copilot
     pub async fn generate(&self) -> Result<Vec<GeneratedFile>> {
         let merger = MarkdownMerger::new(self.config.clone());
 
@@ -48,17 +48,17 @@ impl GitHubAgent {
         }
     }
 
-    /// 統合モード：.github/copilot-instructions.md ファイルを生成
+    /// Merged mode: Generate .github/copilot-instructions.md file
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let content = merger.merge_all_with_options(Some("github")).await?;
 
-        // GitHub Copilotは通常のMarkdownファイル（フロントマターなし）
+        // GitHub Copilot uses regular Markdown files (no frontmatter)
         let instructions_content = self.create_instructions_content(&content);
 
-        // 既存の *.prompt.md ファイルを削除（split モード用）
+        // Delete existing *.prompt.md files (for split mode)
         self.cleanup_split_files().await?;
 
-        // .githubディレクトリを作成
+        // Create .github directory
         let github_dir = self.get_github_dir();
         tokio::fs::create_dir_all(&github_dir).await?;
 
@@ -71,22 +71,22 @@ impl GitHubAgent {
         Ok(vec![GeneratedFile::new(output_path, instructions_content)])
     }
 
-    /// 分割モード：.github/instructions/xxx.instructions.md ファイルを生成
+    /// Split mode: Generate .github/instructions/xxx.instructions.md files
     async fn generate_split(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let files = merger.get_individual_files().await?;
         let mut generated_files = Vec::new();
 
-        // 既存の .github/copilot-instructions.md ファイルを削除（merged モード用）
+        // Delete existing .github/copilot-instructions.md file (for merged mode)
         self.cleanup_merged_file().await?;
 
-        // .github/instructions ディレクトリを作成
+        // Create .github/instructions directory
         let instructions_dir = self.get_instructions_dir();
         tokio::fs::create_dir_all(&instructions_dir).await?;
 
-        // 既存の .instructions.md ファイルを削除
+        // Delete existing .instructions.md files
         self.cleanup_split_files().await?;
 
-        // split_config が設定されている場合は、そのルールに従って生成
+        // If split_config is configured, generate according to those rules
         if let Some(github_config) = &self.config.agents.github.get_advanced_config() {
             if let Some(split_config) = &github_config.split_config {
                 return self
@@ -95,13 +95,13 @@ impl GitHubAgent {
             }
         }
 
-        // split_config が設定されていない場合は、従来通りの生成
+        // If split_config is not configured, generate using traditional method
         for (file_name, content) in files {
             let instructions_content = self.create_instructions_content(&content);
 
-            // ファイル名から拡張子を除去して .instructions.md を追加
+            // Add .instructions.md by removing extension from filename
             let base_name = file_name.trim_end_matches(".md");
-            let safe_name = base_name.replace(['/', '\\'], "_"); // パス区切り文字をアンダースコアに変換
+            let safe_name = base_name.replace(['/', '\\'], "_"); // Convert path separators to underscores
 
             let output_path = if let Some(base_dir) = &self.base_dir {
                 format!(
@@ -118,7 +118,7 @@ impl GitHubAgent {
         Ok(generated_files)
     }
 
-    /// split_config のルールに従ってファイルを生成
+    /// Generate files according to split_config rules
     async fn generate_split_with_config(
         &self,
         files: &[(String, String)],
@@ -127,29 +127,29 @@ impl GitHubAgent {
         let mut generated_files = Vec::new();
         let mut processed_files = std::collections::HashSet::new();
 
-        // 各ルールに対してマッチするファイルを処理
+        // Process matching files for each rule
         for rule in rules {
-            // ルールにマッチするファイルを収集
+            // Collect files that match the rule
             for (file_name, content) in files {
                 if processed_files.contains(file_name.as_str()) {
                     continue;
                 }
 
-                // ファイルがルールにマッチするかチェック
+                // Check if file matches the rule
                 let matches = rule
                     .file_patterns
                     .iter()
                     .any(|pattern| self.file_matches_pattern(file_name, pattern));
 
                 if matches {
-                    // マッチしたファイルを処理済みとしてマーク
+                    // Mark matched file as processed
                     processed_files.insert(file_name.as_str());
 
-                    // applyTo フロントマターを追加
+                    // Add applyTo frontmatter
                     let instructions_content =
                         self.create_instructions_content_with_apply_to(content, &rule.apply_to);
 
-                    // 元のファイル名を保持
+                    // Preserve original filename
                     let base_name = file_name.trim_end_matches(".md");
                     let safe_name = base_name.replace(['/', '\\'], "_");
 
@@ -167,7 +167,7 @@ impl GitHubAgent {
             }
         }
 
-        // マッチしなかったファイルはデフォルトでそのまま出力（apply_toなし）
+        // Output unmatched files as-is by default (no apply_to)
         for (file_name, content) in files {
             if !processed_files.contains(file_name.as_str()) {
                 let instructions_content = self.create_instructions_content(content);
@@ -190,35 +190,35 @@ impl GitHubAgent {
         Ok(generated_files)
     }
 
-    /// ファイル名がパターンにマッチするかチェック
+    /// Check if filename matches pattern
     fn file_matches_pattern(&self, file_name: &str, pattern: &str) -> bool {
-        // シンプルなワイルドカードマッチング
+        // Simple wildcard matching
         if pattern.contains('*') {
-            // "*pattern*" のようなパターンの場合
+            // Pattern like "*pattern*"
             if pattern.starts_with('*') && pattern.ends_with('*') {
                 let middle = &pattern[1..pattern.len() - 1];
                 return file_name.contains(middle);
             }
-            // "*pattern" のようなパターンの場合
+            // Pattern like "*pattern"
             if let Some(suffix) = pattern.strip_prefix('*') {
                 return file_name.ends_with(suffix);
             }
-            // "pattern*" のようなパターンの場合
+            // Pattern like "pattern*"
             if let Some(prefix) = pattern.strip_suffix('*') {
                 return file_name.starts_with(prefix);
             }
         }
 
-        // 完全一致またはサブストリング一致
+        // Exact match or substring match
         file_name.contains(pattern)
     }
 
-    /// GitHub Copilot用のコンテンツを作成（純粋なMarkdown、フロントマターなし）
+    /// Create GitHub Copilot content (pure Markdown, no frontmatter)
     fn create_instructions_content(&self, content: &str) -> String {
         content.to_string()
     }
 
-    /// applyTo フロントマターを含むGitHub Copilot用のコンテンツを作成
+    /// Create GitHub Copilot content with applyTo frontmatter
     fn create_instructions_content_with_apply_to(
         &self,
         content: &str,
@@ -233,13 +233,13 @@ impl GitHubAgent {
         }
     }
 
-    /// 分割モード用ファイル（.github/instructions/*.instructions.md）を削除
+    /// Delete split mode files (.github/instructions/*.instructions.md)
     async fn cleanup_split_files(&self) -> Result<()> {
         use tokio::fs;
 
         let instructions_dir = self.get_instructions_dir();
 
-        // .github/instructions がディレクトリでなければ何もしない
+        // Do nothing if .github/instructions is not a directory
         let metadata = match fs::metadata(&instructions_dir).await {
             Ok(m) => m,
             Err(_) => return Ok(()),
@@ -249,7 +249,7 @@ impl GitHubAgent {
             return Ok(());
         }
 
-        // ディレクトリ内の .instructions.md ファイルを削除
+        // Delete .instructions.md files in directory
         let mut entries = fs::read_dir(&instructions_dir).await?;
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
@@ -265,7 +265,7 @@ impl GitHubAgent {
         Ok(())
     }
 
-    /// 統合モード用ファイル（.github/copilot-instructions.md）を削除
+    /// Delete merged mode file (.github/copilot-instructions.md)
     async fn cleanup_merged_file(&self) -> Result<()> {
         let merged_file_path = if let Some(base_dir) = &self.base_dir {
             format!("{}/.github/copilot-instructions.md", base_dir)
@@ -279,7 +279,7 @@ impl GitHubAgent {
         Ok(())
     }
 
-    /// GitHubディレクトリのパスを取得
+    /// Get GitHub directory path
     fn get_github_dir(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
             format!("{}/.github", base_dir)
@@ -288,7 +288,7 @@ impl GitHubAgent {
         }
     }
 
-    /// GitHub instructionsディレクトリのパスを取得
+    /// Get GitHub instructions directory path
     fn get_instructions_dir(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
             format!("{}/.github/instructions", base_dir)
@@ -309,7 +309,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(output_mode),
-            include_filenames: Some(true), // テスト用にヘッダーを有効化
+            include_filenames: Some(true), // Enable headers for testing
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
@@ -337,7 +337,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test file
         std::fs::write(docs_path.join("test.md"), "# Test Content\nThis is a test.").unwrap();
 
         let config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Merged);
@@ -352,9 +352,9 @@ mod tests {
         );
         assert_eq!(files[0].path, expected_path);
 
-        // ファイル名のヘッダーが含まれることを確認
+        // Confirm filename header is included
         assert!(files[0].content.contains("# test.md"));
-        // 元のコンテンツが含まれることを確認
+        // Confirm original content is included
         assert!(files[0].content.contains("# Test Content"));
         assert!(files[0].content.contains("This is a test."));
     }
@@ -364,7 +364,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // 複数のテスト用ファイルを作成
+        // Create multiple test files
         std::fs::write(docs_path.join("file1.md"), "Content 1").unwrap();
         std::fs::write(docs_path.join("file2.md"), "Content 2").unwrap();
 
@@ -375,7 +375,7 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 2);
 
-        // ファイル名とパスをチェック
+        // Check filenames and paths
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
         let expected_path1 = format!(
             "{}/.github/instructions/file1.instructions.md",
@@ -388,7 +388,7 @@ mod tests {
         assert!(paths.contains(&&expected_path1));
         assert!(paths.contains(&&expected_path2));
 
-        // 内容をチェック
+        // Check content
         for file in &files {
             if file.path.contains("file1") {
                 assert!(file.content.contains("Content 1"));
@@ -403,7 +403,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // サブディレクトリを作成
+        // Create subdirectory
         let sub_dir = docs_path.join("subdir");
         fs::create_dir(&sub_dir).await.unwrap();
         fs::write(sub_dir.join("nested.md"), "Nested content")
@@ -417,7 +417,7 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
 
-        // パス区切り文字がアンダースコアに変換されていることを確認
+        // Confirm path separators are converted to underscores
         let expected_path = format!(
             "{}/.github/instructions/subdir_nested.instructions.md",
             temp_dir.path().to_string_lossy()
@@ -431,7 +431,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test file
         fs::write(docs_path.join("test.md"), "# Test\nContent here")
             .await
             .unwrap();
@@ -443,26 +443,26 @@ mod tests {
         let files = agent.generate().await.unwrap();
         let content = &files[0].content;
 
-        // 純粋な Markdown であることを確認（YAML frontmatter なし）
+        // Confirm it's pure Markdown (no YAML frontmatter)
         assert!(!content.starts_with("---"));
         assert!(!content.contains("description:"));
         assert!(!content.contains("alwaysApply:"));
 
-        // 内容は含まれていることを確認
+        // Confirm content is included
         assert!(content.contains("# Test"));
         assert!(content.contains("Content here"));
     }
 
     #[tokio::test]
     async fn test_cleanup_split_files_ignores_file_path() {
-        // .github/instructions がファイルの場合でもエラーなく終了すること
+        // Test that it ends without error even when .github/instructions is a file
         let temp_dir = tempdir().unwrap();
 
-        // setup: instructions をファイルとして作成
+        // setup: create instructions as file
         let github_dir = temp_dir.path().join(".github");
         std::fs::create_dir_all(&github_dir).unwrap();
 
-        // 既存のパスを削除してからファイルを作成
+        // Delete existing path before creating file
         let instructions_path = github_dir.join("instructions");
         let _ = std::fs::remove_file(&instructions_path);
         let _ = std::fs::remove_dir_all(&instructions_path);
@@ -472,10 +472,10 @@ mod tests {
         let agent =
             GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
-        // 実行してもエラーが発生しないこと
+        // Should not cause error when executed
         agent.cleanup_split_files().await.unwrap();
 
-        // ファイルはそのまま残っていることを確認
+        // Confirm file remains as-is
         let metadata = std::fs::metadata(&instructions_path).unwrap();
         assert!(metadata.is_file());
     }
@@ -485,7 +485,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test files
         std::fs::write(
             docs_path.join("architecture.md"),
             "# Architecture\nSystem design",
@@ -493,7 +493,7 @@ mod tests {
         .unwrap();
         std::fs::write(docs_path.join("frontend.md"), "# Frontend\nUI components").unwrap();
 
-        // split_config 付きの設定を作成
+        // Create configuration with split_config
         use crate::types::{GitHubAgentConfig, GitHubConfig, GitHubSplitConfig};
         let github_config = GitHubConfig::Advanced(GitHubAgentConfig {
             enabled: true,
@@ -522,7 +522,7 @@ mod tests {
 
         assert_eq!(files.len(), 2);
 
-        // アーキテクチャファイルをチェック
+        // Check architecture file
         let arch_file = files
             .iter()
             .find(|f| f.path.contains("architecture"))
@@ -531,7 +531,7 @@ mod tests {
         assert!(arch_file.content.contains("applyTo: \"**/*.rs,**/*.toml\""));
         assert!(arch_file.content.contains("# Architecture"));
 
-        // フロントエンドファイルをチェック
+        // Check frontend file
         let frontend_file = files.iter().find(|f| f.path.contains("frontend")).unwrap();
         assert!(frontend_file.content.contains("---"));
         assert!(frontend_file
@@ -547,19 +547,19 @@ mod tests {
         let agent =
             GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
-        // "*pattern*" のテスト
+        // "*pattern*" test
         assert!(agent.file_matches_pattern("test-architecture-doc.md", "*architecture*"));
         assert!(!agent.file_matches_pattern("frontend.md", "*architecture*"));
 
-        // "*pattern" のテスト
+        // "*pattern" test
         assert!(agent.file_matches_pattern("setup.md", "*setup.md"));
         assert!(!agent.file_matches_pattern("setup-guide.md", "*setup.md"));
 
-        // "pattern*" のテスト
+        // "pattern*" test
         assert!(agent.file_matches_pattern("frontend-components.md", "frontend*"));
         assert!(!agent.file_matches_pattern("my-frontend.md", "frontend*"));
 
-        // 完全一致のテスト
+        // Exact match test
         assert!(agent.file_matches_pattern("readme.md", "readme"));
         assert!(agent.file_matches_pattern("my-readme-file.md", "readme"));
     }
@@ -571,7 +571,7 @@ mod tests {
         let agent =
             GitHubAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
-        // applyTo が設定されている場合
+        // applyTo is set
         let content_with_apply_to = agent.create_instructions_content_with_apply_to(
             "Test content",
             &Some(vec!["**/*.ts".to_string(), "**/*.tsx".to_string()]),
@@ -580,12 +580,12 @@ mod tests {
         assert!(content_with_apply_to.contains("applyTo: \"**/*.ts,**/*.tsx\""));
         assert!(content_with_apply_to.contains("Test content"));
 
-        // applyTo が設定されていない場合
+        // applyTo is not set
         let content_without_apply_to =
             agent.create_instructions_content_with_apply_to("Test content", &None);
         assert_eq!(content_without_apply_to, "Test content");
 
-        // applyTo が空配列の場合
+        // applyTo is empty array
         let content_empty_apply_to =
             agent.create_instructions_content_with_apply_to("Test content", &Some(vec![]));
         assert_eq!(content_empty_apply_to, "Test content");
@@ -596,7 +596,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test files
         std::fs::write(
             docs_path.join("03_architecture.md"),
             "# Architecture\nSystem design",
@@ -613,7 +613,7 @@ mod tests {
         )
         .unwrap();
 
-        // split_config 付きの設定を作成（securityファイルはマッチしない）
+        // Create configuration with split_config (security file does not match)
         use crate::types::{GitHubAgentConfig, GitHubConfig, GitHubSplitConfig};
         let github_config = GitHubConfig::Advanced(GitHubAgentConfig {
             enabled: true,
@@ -642,7 +642,7 @@ mod tests {
 
         assert_eq!(files.len(), 3); // architecture, frontend, security
 
-        // アーキテクチャファイル（applyTo付き、元のファイル名保持）をチェック
+        // Check architecture file (applyTo, original filename)
         let arch_file = files
             .iter()
             .find(|f| f.path.contains("03_architecture"))
@@ -656,7 +656,7 @@ mod tests {
         assert!(arch_file.content.contains("applyTo: \"**/*.rs,**/*.toml\""));
         assert!(arch_file.content.contains("# Architecture"));
 
-        // フロントエンドファイル（applyTo付き、元のファイル名保持）をチェック
+        // Check frontend file (applyTo, original filename)
         let frontend_file = files
             .iter()
             .find(|f| f.path.contains("02_frontend"))
@@ -672,7 +672,7 @@ mod tests {
             .contains("applyTo: \"**/*.ts,**/*.tsx\""));
         assert!(frontend_file.content.contains("# Frontend"));
 
-        // セキュリティファイル（デフォルト、applyToなし、元のファイル名保持）をチェック
+        // Check security file (default, no apply_to, original filename)
         let security_file = files
             .iter()
             .find(|f| f.path.contains("01_security"))

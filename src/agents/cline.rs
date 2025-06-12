@@ -1,11 +1,11 @@
 /*!
  * AI Context Management Tool - Cline Agent
  *
- * Cline エージェントの実装
- * 仕様: https://docs.cline.bot/features/cline-rules
+ * Cline agent implementation
+ * Specification: https://docs.cline.bot/features/cline-rules
  *
- * Split モード: .clinerules/ フォルダに複数の .md ファイル
- * Merged モード: .clinerules 単一ファイル（拡張子なし）
+ * Split mode: Multiple .md files in .clinerules/ folder
+ * Merged mode: Single .clinerules file (no extension)
  */
 
 use crate::core::MarkdownMerger;
@@ -13,14 +13,14 @@ use crate::types::{AIContextConfig, GeneratedFile, OutputMode};
 use anyhow::Result;
 use tokio::fs;
 
-/// Cline エージェント
+/// Cline agent
 pub struct ClineAgent {
     config: AIContextConfig,
     base_dir: Option<String>,
 }
 
 impl ClineAgent {
-    /// 新しい Cline エージェントを作成
+    /// Create a new Cline agent
     pub fn new(config: AIContextConfig) -> Self {
         Self {
             config,
@@ -28,7 +28,7 @@ impl ClineAgent {
         }
     }
 
-    /// テスト用：base_dirを指定してClineエージェントを作成
+    /// For testing: create Cline agent with specified base_dir
     pub fn new_with_base_dir(config: AIContextConfig, base_dir: String) -> Self {
         Self {
             config,
@@ -36,7 +36,7 @@ impl ClineAgent {
         }
     }
 
-    /// Cline 用ファイルを生成
+    /// Generate files for Cline
     pub async fn generate(&self) -> Result<Vec<GeneratedFile>> {
         let merger = MarkdownMerger::new(self.config.clone());
 
@@ -46,12 +46,12 @@ impl ClineAgent {
         }
     }
 
-    /// Merged モード：.clinerules 単一ファイル（拡張子なし）
+    /// Merged mode: Single .clinerules file (no extension)
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let content = merger.merge_all_with_options(Some("cline")).await?;
         let output_path = self.get_merged_output_path();
 
-        // 既存の .clinerules ディレクトリ（split モード用）が存在する場合は削除
+        // Delete existing .clinerules directory (for split mode) if it exists
         if let Ok(metadata) = fs::metadata(&output_path).await {
             if metadata.is_dir() {
                 fs::remove_dir_all(&output_path).await?;
@@ -61,21 +61,21 @@ impl ClineAgent {
         Ok(vec![GeneratedFile::new(output_path, content)])
     }
 
-    /// Split モード：.clinerules/ フォルダに複数の .md ファイル
+    /// Split mode: Multiple .md files in .clinerules/ folder
     async fn generate_split(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let files = merger.get_individual_files().await?;
         let mut generated_files = Vec::new();
 
-        // .clinerules/ ディレクトリを準備
+        // Prepare .clinerules/ directory
         let rules_dir = self.get_split_rules_dir();
         self.prepare_rules_directory(&rules_dir).await?;
 
         for (file_name, content) in files {
-            // ファイル名から拡張子を除去してmdファイル名を作成
+            // Create md filename by removing extension from filename
             let base_name = file_name.trim_end_matches(".md");
-            let safe_name = base_name.replace(['/', '\\'], "_"); // パス区切り文字をアンダースコアに変換
+            let safe_name = base_name.replace(['/', '\\'], "_"); // Convert path separators to underscores
 
-            // 元のファイル名を使用（数字プレフィックスなし）
+            // Use original filename (no number prefix)
             let output_filename = format!("{}.md", safe_name);
 
             generated_files.push(GeneratedFile::new(
@@ -87,32 +87,32 @@ impl ClineAgent {
         Ok(generated_files)
     }
 
-    /// Merged モードの出力パスを取得
+    /// Get output path for merged mode
     fn get_merged_output_path(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
             format!("{}/.clinerules", base_dir)
         } else {
-            ".clinerules".to_string() // 拡張子なし
+            ".clinerules".to_string() // No extension
         }
     }
 
-    /// Split モードのルールディレクトリのパスを取得
+    /// Get rules directory path for split mode
     fn get_split_rules_dir(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
             format!("{}/.clinerules", base_dir)
         } else {
-            ".clinerules".to_string() // フォルダ
+            ".clinerules".to_string() // Folder
         }
     }
 
-    /// .clinerules/ ディレクトリを準備（既存ファイルを削除）
+    /// Prepare .clinerules/ directory (delete existing files)
     async fn prepare_rules_directory(&self, rules_dir: &str) -> Result<()> {
-        // 既存の .clinerules ファイル（merged モード用）が存在する場合は削除
+        // Delete existing .clinerules file (for merged mode) if it exists
         if let Ok(metadata) = fs::metadata(rules_dir).await {
             if metadata.is_file() {
                 fs::remove_file(rules_dir).await?;
             } else if metadata.is_dir() {
-                // ディレクトリが存在する場合、中身を削除
+                // If directory exists, delete its contents
                 let mut entries = fs::read_dir(rules_dir).await?;
                 while let Some(entry) = entries.next_entry().await? {
                     let path = entry.path();
@@ -123,7 +123,7 @@ impl ClineAgent {
             }
         }
 
-        // ディレクトリを作成（存在しない場合）
+        // Create directory (if it doesn't exist)
         fs::create_dir_all(rules_dir).await?;
         Ok(())
     }
@@ -140,7 +140,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(output_mode),
-            include_filenames: Some(true), // テスト用にヘッダーを有効化
+            include_filenames: Some(true), // Enable headers for testing
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
@@ -156,7 +156,7 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
         let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
-        assert_eq!(files[0].path, expected_path); // 拡張子なし
+        assert_eq!(files[0].path, expected_path); // No extension
     }
 
     #[tokio::test]
@@ -164,7 +164,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test file
         fs::write(docs_path.join("test.md"), "# Test Content\nThis is a test.")
             .await
             .unwrap();
@@ -178,9 +178,9 @@ mod tests {
         let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
         assert_eq!(files[0].path, expected_path);
 
-        // ファイル名のヘッダーが含まれることを確認
+        // Confirm filename header is included
         assert!(files[0].content.contains("# test.md"));
-        // 元のコンテンツが含まれることを確認
+        // Confirm original content is included
         assert!(files[0].content.contains("# Test Content"));
         assert!(files[0].content.contains("This is a test."));
     }
@@ -190,7 +190,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // 複数のテスト用ファイルを作成
+        // Create multiple test files
         fs::write(docs_path.join("file1.md"), "Content 1")
             .await
             .unwrap();
@@ -205,14 +205,14 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 2);
 
-        // ファイル名とパスをチェック
+        // Check filenames and paths
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
         let expected_path1 = format!("{}/.clinerules/file1.md", temp_dir.path().to_string_lossy());
         let expected_path2 = format!("{}/.clinerules/file2.md", temp_dir.path().to_string_lossy());
         assert!(paths.contains(&&expected_path1));
         assert!(paths.contains(&&expected_path2));
 
-        // 内容をチェック
+        // Check content
         for file in &files {
             if file.path.contains("file1") {
                 assert!(file.content.contains("Content 1"));
@@ -227,7 +227,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // サブディレクトリを作成
+        // Create subdirectory
         let sub_dir = docs_path.join("subdir");
         fs::create_dir(&sub_dir).await.unwrap();
         fs::write(sub_dir.join("nested.md"), "Nested content")
@@ -241,7 +241,7 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
 
-        // パス区切り文字がアンダースコアに変換されていることを確認
+        // Confirm path separators are converted to underscores
         let expected_path = format!(
             "{}/.clinerules/subdir_nested.md",
             temp_dir.path().to_string_lossy()
@@ -259,7 +259,7 @@ mod tests {
 
         let output_path = agent.get_merged_output_path();
         let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
-        assert_eq!(output_path, expected_path); // 拡張子なし
+        assert_eq!(output_path, expected_path); // No extension
     }
 
     #[tokio::test]
@@ -271,7 +271,7 @@ mod tests {
 
         let rules_dir = agent.get_split_rules_dir();
         let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
-        assert_eq!(rules_dir, expected_path); // フォルダ
+        assert_eq!(rules_dir, expected_path); // Folder
     }
 
     #[tokio::test]
@@ -282,26 +282,26 @@ mod tests {
         let agent =
             ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
-        // ディレクトリを作成
+        // Create directory
         fs::create_dir_all(&rules_dir).await.unwrap();
 
-        // 既存のmdファイルを作成
+        // Create existing md file
         let existing_md = rules_dir.join("old_file.md");
         let other_file = rules_dir.join("keep_me.txt");
         fs::write(&existing_md, "old content").await.unwrap();
         fs::write(&other_file, "keep this").await.unwrap();
 
-        // ファイルが存在することを確認
+        // Confirm files exist
         assert!(existing_md.exists());
         assert!(other_file.exists());
 
-        // prepare_rules_directory を実行
+        // Execute prepare_rules_directory
         agent
             .prepare_rules_directory(&rules_dir.to_string_lossy())
             .await
             .unwrap();
 
-        // mdファイルは削除され、他のファイルは残っていることを確認
+        // Confirm md file is deleted and other file remains
         assert!(!existing_md.exists());
         assert!(other_file.exists());
     }
@@ -311,7 +311,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // 複数のテスト用ファイルを作成
+        // Create multiple test files
         fs::write(docs_path.join("apple.md"), "Apple content")
             .await
             .unwrap();
@@ -329,10 +329,10 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 3);
 
-        // シンプルなファイル名（数字プレフィックスなし）を確認
+        // Confirm simple filenames (no number prefix)
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
 
-        // 元のファイル名が保持されることを確認
+        // Confirm original filenames are preserved
         assert!(paths.iter().any(|p| p.contains("apple.md")));
         assert!(paths.iter().any(|p| p.contains("banana.md")));
         assert!(paths.iter().any(|p| p.contains("cherry.md")));

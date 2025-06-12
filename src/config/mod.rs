@@ -1,7 +1,7 @@
 /*!
  * AI Context Management Tool - Configuration Module
  *
- * このモジュールは設定ファイルの読み込みと検証機能を提供します。
+ * This module provides configuration file loading and validation functions.
  */
 
 pub mod error;

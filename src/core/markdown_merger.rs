@@ -1,7 +1,7 @@
 /*!
  * AI Context Management Tool - Markdown Merger (Simplified)
  *
- * シンプル化されたMarkdownファイル結合機能
+ * Simplified Markdown file merging functionality
  */
 
 use crate::types::AIContextConfig;
@@ -9,22 +9,22 @@ use anyhow::Result;
 use std::path::Path;
 use tokio::fs;
 
-/// Markdownファイルを自動検出・結合するクラス
+/// Class for automatic Markdown file detection and merging
 pub struct MarkdownMerger {
     config: AIContextConfig,
 }
 
 impl MarkdownMerger {
-    /// 新しいMarkdownマージャーを作成
+    /// Create a new Markdown merger
     pub fn new(config: AIContextConfig) -> Self {
         Self { config }
     }
 
-    /// docs配下の全Markdownファイルを結合（下位互換性のためファイル名ヘッダーを含む）
+    /// Merge all Markdown files under docs (includes filename headers for backward compatibility)
     pub async fn merge_all(&self) -> Result<String> {
         let docs_dir = Path::new(&self.config.base_docs_dir);
 
-        // ディレクトリが存在しない場合は空文字を返す
+        // Return empty string if directory doesn't exist
         if !docs_dir.exists() {
             return Ok(String::new());
         }
@@ -32,10 +32,10 @@ impl MarkdownMerger {
         let markdown_files = self.find_markdown_files(docs_dir).await?;
         let mut merged_content = String::new();
 
-        // 下位互換性のため、常にファイル名ヘッダーを含む
+        // Always include filename headers for backward compatibility
         for file_path in markdown_files {
             if let Ok(content) = fs::read_to_string(&file_path).await {
-                // ファイル名をヘッダーとして追加
+                // Add filename as header
                 let relative_path = file_path
                     .strip_prefix(&self.config.base_docs_dir)
                     .unwrap_or(&file_path)
@@ -48,11 +48,11 @@ impl MarkdownMerger {
         Ok(merged_content.trim().to_string())
     }
 
-    /// docs配下の全Markdownファイルを結合（エージェント名指定版）
+    /// Merge all Markdown files under docs (agent name specified version)
     pub async fn merge_all_with_options(&self, agent: Option<&str>) -> Result<String> {
         let docs_dir = Path::new(&self.config.base_docs_dir);
 
-        // ディレクトリが存在しない場合は空文字を返す
+        // Return empty string if directory doesn't exist
         if !docs_dir.exists() {
             return Ok(String::new());
         }
@@ -60,7 +60,7 @@ impl MarkdownMerger {
         let markdown_files = self.find_markdown_files(docs_dir).await?;
         let mut merged_content = String::new();
 
-        // include_filenames 設定を取得
+        // Get include_filenames setting
         let include_filenames = if let Some(agent_name) = agent {
             self.config.get_effective_include_filenames(agent_name)
         } else {
@@ -70,7 +70,7 @@ impl MarkdownMerger {
         for file_path in markdown_files {
             if let Ok(content) = fs::read_to_string(&file_path).await {
                 if include_filenames {
-                    // ファイル名をヘッダーとして追加
+                    // Add filename as header
                     let relative_path = file_path
                         .strip_prefix(&self.config.base_docs_dir)
                         .unwrap_or(&file_path)
@@ -82,7 +82,7 @@ impl MarkdownMerger {
                         content.trim()
                     ));
                 } else {
-                    // ファイル名ヘッダーなしでコンテンツのみ追加
+                    // Add content only without filename header
                     merged_content.push_str(&format!("{}\n\n", content.trim()));
                 }
             }
@@ -91,7 +91,7 @@ impl MarkdownMerger {
         Ok(merged_content.trim().to_string())
     }
 
-    /// split用：個別ファイルの内容を取得
+    /// For split: get individual file contents
     pub async fn get_individual_files(&self) -> Result<Vec<(String, String)>> {
         let docs_dir = Path::new(&self.config.base_docs_dir);
 
@@ -117,7 +117,7 @@ impl MarkdownMerger {
         Ok(files)
     }
 
-    /// 指定ディレクトリから再帰的に.mdファイルを検索
+    /// Recursively search for .md files from specified directory
     async fn find_markdown_files(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
         use std::collections::VecDeque;
 
@@ -132,16 +132,16 @@ impl MarkdownMerger {
                 let path = entry.path();
 
                 if path.is_dir() {
-                    // ディレクトリの場合は処理キューに追加
+                    // Add to processing queue if it's a directory
                     dirs_to_process.push_back(path);
                 } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
-                    // .mdファイルの場合はリストに追加
+                    // Add to list if it's a .md file
                     files.push(path);
                 }
             }
         }
 
-        // ファイル名でソート（一貫した順序で処理）
+        // Sort by filename (process in consistent order)
         files.sort();
         Ok(files)
     }
@@ -188,7 +188,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用markdownファイルを作成
+        // Create test markdown file
         fs::write(
             docs_path.join("test.md"),
             "# Test Content\n\nThis is a test.",
@@ -210,7 +210,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // 複数のテスト用ファイルを作成
+        // Create multiple test files
         fs::write(docs_path.join("file1.md"), "# File 1\nContent 1")
             .await
             .unwrap();
@@ -235,11 +235,11 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // サブディレクトリを作成
+        // Create subdirectory
         let sub_dir = docs_path.join("subdir");
         fs::create_dir(&sub_dir).await.unwrap();
 
-        // 各ディレクトリにファイルを作成
+        // Create files in each directory
         fs::write(docs_path.join("root.md"), "Root content")
             .await
             .unwrap();
@@ -253,7 +253,7 @@ mod tests {
         let result = merger.merge_all().await.unwrap();
         assert!(result.contains("# root.md"));
         assert!(result.contains("Root content"));
-        assert!(result.contains("# subdir/sub.md") || result.contains("# subdir\\sub.md")); // Windows対応
+        assert!(result.contains("# subdir/sub.md") || result.contains("# subdir\\sub.md")); // Windows support
         assert!(result.contains("Sub content"));
     }
 
@@ -262,7 +262,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test files
         fs::write(docs_path.join("file1.md"), "Content 1")
             .await
             .unwrap();
@@ -276,7 +276,7 @@ mod tests {
         let files = merger.get_individual_files().await.unwrap();
         assert_eq!(files.len(), 2);
 
-        // ファイル名でソートされているかチェック
+        // Check if sorted by filename
         assert_eq!(files[0].0, "file1.md");
         assert_eq!(files[0].1, "Content 1");
         assert_eq!(files[1].0, "file2.md");
@@ -288,7 +288,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // 様々な拡張子のファイルを作成
+        // Create files with various extensions
         fs::write(docs_path.join("test.md"), "Markdown content")
             .await
             .unwrap();

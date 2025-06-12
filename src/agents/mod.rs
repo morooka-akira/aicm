@@ -1,7 +1,7 @@
 /*!
  * AI Context Management Tool - Agents Module
  *
- * このモジュールは各AIエージェント用の実装を提供します。
+ * This module provides implementations for each AI agent.
  */
 
 pub mod base;

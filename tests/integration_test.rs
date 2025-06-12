@@ -1,17 +1,17 @@
 /*!
  * AI Context Management Tool - Integration Tests (Simplified)
  *
- * シンプル化されたCLIコマンドの統合テスト
+ * Simplified CLI command integration tests
  */
 
 use std::process::Command;
 use tempfile::tempdir;
 
-// テストヘルパー：バイナリをビルドして実行するための共通関数
+// Test helper: Common function to build and execute binary
 fn run_aicm_command(args: &[&str], working_dir: Option<&std::path::Path>) -> std::process::Output {
     let current_dir = std::env::current_dir().unwrap();
 
-    // バイナリをビルド
+    // Build binary
     let build_output = Command::new("cargo")
         .args(["build"])
         .current_dir(&current_dir)
@@ -69,7 +69,7 @@ fn test_cli_generate_help_includes_config_option() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("--config"));
     assert!(stdout.contains("-c"));
-    assert!(stdout.contains("設定ファイルのパス"));
+    assert!(stdout.contains("Path to configuration file"));
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn test_cli_generate_with_nonexistent_config() {
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    // エラーメッセージにファイルが見つからない旨が含まれることを確認
+    // Verify that error message contains file not found indication
     assert!(stderr.contains("nonexistent") || stderr.contains("FileNotFound"));
 }
 
@@ -92,7 +92,7 @@ fn test_cli_generate_with_custom_config() {
     let config_path = temp_dir.path().join("custom.yaml");
     let docs_path = temp_dir.path().join("docs");
 
-    // カスタム設定ファイルを作成（claudeのみ有効でclineを無効にしてファイル削除を回避）
+    // Create custom config file (only claude enabled, cline disabled to avoid file deletion)
     let config_content = format!(
         r#"
 version: "1.0"
@@ -110,11 +110,11 @@ agents:
 
     std::fs::write(&config_path, config_content).unwrap();
 
-    // docsディレクトリを作成
+    // Create docs directory
     std::fs::create_dir_all(&docs_path).unwrap();
     std::fs::write(docs_path.join("test.md"), "# Test content").unwrap();
 
-    // 現在の作業ディレクトリを取得（プロジェクトルート） - ヘルパー関数内でのみ使用
+    // Get current working directory (project root) - only used within helper function
     let _current_dir = std::env::current_dir().unwrap();
 
     let output = run_aicm_command(
@@ -132,7 +132,7 @@ agents:
     }
     assert!(output.status.success());
 
-    assert!(stdout.contains("コンテキストファイルを生成します"));
+    assert!(stdout.contains("Generating context files"));
     assert!(stdout.contains("custom.yaml"));
 
     // 出力ファイルが一時ディレクトリに作成されることを確認
@@ -154,7 +154,7 @@ fn test_cli_validate_help_includes_config_option() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("--config"));
     assert!(stdout.contains("-c"));
-    assert!(stdout.contains("設定ファイルのパス"));
+    assert!(stdout.contains("Path to configuration file"));
 }
 
 #[test]
@@ -167,8 +167,8 @@ fn test_cli_validate_with_nonexistent_config() {
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    // エラーメッセージにファイルが見つからない旨が含まれることを確認
-    assert!(stderr.contains("設定ファイルの検証でエラーが発生しました"));
+    // Verify that error message contains file not found indication
+    assert!(stderr.contains("Configuration validation error"));
 }
 
 #[test]
@@ -177,7 +177,7 @@ fn test_cli_validate_with_custom_config() {
     let config_path = temp_dir.path().join("validate-custom.yaml");
     let docs_path = temp_dir.path().join("docs");
 
-    // docsディレクトリを作成
+    // Create docs directory
     std::fs::create_dir_all(&docs_path).unwrap();
 
     // 有効な設定ファイルを作成（clineを無効にしてファイル削除を回避）
@@ -205,9 +205,9 @@ agents:
 
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("設定ファイルを検証します"));
+    assert!(stdout.contains("Validating configuration file"));
     assert!(stdout.contains("validate-custom.yaml"));
-    assert!(stdout.contains("設定ファイルは有効です"));
+    assert!(stdout.contains("Configuration file is valid"));
 }
 
 #[test]
@@ -241,7 +241,7 @@ agents:
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("ドキュメントディレクトリが存在しません"));
+    assert!(stderr.contains("Documentation directory does not exist"));
     assert!(stderr.contains("nonexistent-docs"));
 }
 
@@ -276,6 +276,6 @@ agents:
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("ドキュメントディレクトリが存在しません"));
+    assert!(stderr.contains("Documentation directory does not exist"));
     assert!(stderr.contains("nonexistent-docs"));
 }

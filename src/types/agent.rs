@@ -1,22 +1,22 @@
 /*!
  * AI Context Management Tool - Agent Types (Simplified)
  *
- * シンプル化されたエージェント関連の型定義
+ * Simplified agent-related type definitions
  */
 
 use serde::{Deserialize, Serialize};
 
-/// 生成されるファイルの情報
+/// Information about generated files
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneratedFile {
-    /// ファイルパス（プロジェクトルートからの相対パス）
+    /// File path (relative path from project root)
     pub path: String,
-    /// ファイルの内容
+    /// File content
     pub content: String,
 }
 
 impl GeneratedFile {
-    /// 新しい GeneratedFile を作成
+    /// Create a new GeneratedFile
     pub fn new(path: String, content: String) -> Self {
         Self { path, content }
     }

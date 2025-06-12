@@ -1,7 +1,7 @@
 /*!
  * AI Context Management Tool - Cursor Agent (Simplified)
  *
- * シンプル化されたCursorエージェントの実装
+ * Simplified Cursor agent implementation
  */
 
 use crate::core::MarkdownMerger;
@@ -9,14 +9,14 @@ use crate::types::{AIContextConfig, CursorConfig, GeneratedFile, OutputMode};
 use anyhow::Result;
 use tokio::fs;
 
-/// Cursorエージェント（シンプル版）
+/// Cursor agent (simplified version)
 pub struct CursorAgent {
     config: AIContextConfig,
     base_dir: Option<String>,
 }
 
 impl CursorAgent {
-    /// 新しいCursorエージェントを作成
+    /// Create a new Cursor agent
     pub fn new(config: AIContextConfig) -> Self {
         Self {
             config,
@@ -24,7 +24,7 @@ impl CursorAgent {
         }
     }
 
-    /// ベースディレクトリ指定でCursorエージェントを作成
+    /// Create Cursor agent with specified base directory
     #[cfg(test)]
     pub fn new_with_base_dir(config: AIContextConfig, base_dir: String) -> Self {
         Self {
@@ -33,7 +33,7 @@ impl CursorAgent {
         }
     }
 
-    /// Cursor用ファイルを生成
+    /// Generate files for Cursor
     pub async fn generate(&self) -> Result<Vec<GeneratedFile>> {
         let merger = MarkdownMerger::new(self.config.clone());
 
@@ -43,12 +43,12 @@ impl CursorAgent {
         }
     }
 
-    /// 統合モード：1つのファイルに結合
+    /// Merged mode: merge into one file
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let content = merger.merge_all_with_options(Some("cursor")).await?;
         let mdc_content = self.create_mdc_content(&content);
 
-        // .cursor/rules/ ディレクトリを作成し、既存ファイルを削除
+        // Create .cursor/rules/ directory and delete existing files
         let rules_dir = self.get_rules_dir();
         self.prepare_rules_directory(&rules_dir).await?;
 
@@ -58,23 +58,23 @@ impl CursorAgent {
         )])
     }
 
-    /// 分割モード：ファイルごとに分割
+    /// Split mode: split by file
     async fn generate_split(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
         let files = merger.get_individual_files().await?;
         let mut generated_files = Vec::new();
 
-        // .cursor/rules/ ディレクトリを作成し、既存ファイルを削除
+        // Create .cursor/rules/ directory and delete existing files
         let rules_dir = self.get_rules_dir();
         self.prepare_rules_directory(&rules_dir).await?;
 
-        // split_config設定の確認
+        // Check split_config setting
         let split_config = self.get_split_config();
 
         if let Some(config) = split_config {
-            // split_config設定がある場合：ルールベースでファイルを処理
+            // When split_config setting exists: process files based on rules
             let mut processed_files = std::collections::HashSet::new();
 
-            // 各ルールに対してマッチするファイルを処理
+            // Process matching files for each rule
             for rule in &config.rules {
                 for (file_name, content) in &files {
                     if processed_files.contains(file_name) {
@@ -94,7 +94,7 @@ impl CursorAgent {
                 }
             }
 
-            // マッチしなかったファイルはデフォルトのalwaysルールで処理
+            // Process unmatched files with default always rule
             for (file_name, content) in &files {
                 if !processed_files.contains(file_name) {
                     let mdc_content = self.create_mdc_content(content);
@@ -108,13 +108,13 @@ impl CursorAgent {
                 }
             }
         } else {
-            // 従来通りの動作：全ファイルを個別に変換（alwaysApply: trueのデフォルト）
+            // Traditional behavior: convert all files individually (default alwaysApply: true)
             for (file_name, content) in files {
                 let mdc_content = self.create_mdc_content(&content);
 
-                // ファイル名から拡張子を除去してmdcファイル名を作成
+                // Create mdc filename by removing extension from filename
                 let base_name = file_name.trim_end_matches(".md");
-                let safe_name = base_name.replace(['/', '\\'], "_"); // パス区切り文字をアンダースコアに変換
+                let safe_name = base_name.replace(['/', '\\'], "_"); // Convert path separators to underscores
 
                 generated_files.push(GeneratedFile::new(
                     format!("{}/{}.mdc", rules_dir, safe_name),
@@ -126,7 +126,7 @@ impl CursorAgent {
         Ok(generated_files)
     }
 
-    /// rulesディレクトリのパスを取得
+    /// Get rules directory path
     fn get_rules_dir(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
             format!("{}/.cursor/rules", base_dir)
@@ -135,9 +135,9 @@ impl CursorAgent {
         }
     }
 
-    /// .cursor/rules/ ディレクトリを準備（既存ファイルを削除）
+    /// Prepare .cursor/rules/ directory (delete existing files)
     async fn prepare_rules_directory(&self, rules_dir: &str) -> Result<()> {
-        // ディレクトリが存在する場合、中身を削除
+        // Delete contents if directory exists
         if fs::metadata(rules_dir).await.is_ok() {
             let mut entries = fs::read_dir(rules_dir).await?;
             while let Some(entry) = entries.next_entry().await? {
@@ -148,24 +148,24 @@ impl CursorAgent {
             }
         }
 
-        // ディレクトリを作成（存在しない場合）
+        // Create directory (if it doesn't exist)
         fs::create_dir_all(rules_dir).await?;
         Ok(())
     }
 
-    /// MDC形式のコンテンツを作成（YAML frontmatter + Markdown）
+    /// Create MDC format content (YAML frontmatter + Markdown)
     fn create_mdc_content(&self, markdown_content: &str) -> String {
         let frontmatter = self.create_frontmatter();
         format!("---\n{}---\n\n{}", frontmatter, markdown_content)
     }
 
-    /// YAML frontmatterを作成（デフォルト: Always Apply形式）
+    /// Create YAML frontmatter (default: Always Apply format)
     fn create_frontmatter(&self) -> String {
-        // 直接文字列で組み立てて理想的なフォーマットにする
+        // Build directly as string for ideal format
         "description:\nglobs:\nalwaysApply: true\n".to_string()
     }
 
-    /// split_config設定を取得
+    /// Get split_config setting
     fn get_split_config(&self) -> Option<&crate::types::CursorSplitConfig> {
         match &self.config.agents.cursor {
             CursorConfig::Advanced(config) => config.split_config.as_ref(),
@@ -173,7 +173,7 @@ impl CursorAgent {
         }
     }
 
-    /// ファイル名がパターンにマッチするかチェック
+    /// Check if filename matches patterns
     fn file_matches_patterns(&self, file_name: &str, patterns: &[String]) -> bool {
         for pattern in patterns {
             if self.simple_pattern_match(file_name, pattern) {
@@ -183,30 +183,30 @@ impl CursorAgent {
         false
     }
 
-    /// 簡単なパターンマッチング（ワイルドカード対応）
+    /// Simple pattern matching (with wildcard support)
     fn simple_pattern_match(&self, file_name: &str, pattern: &str) -> bool {
         if pattern.contains('*') {
-            // ワイルドカードを含む場合
+            // When pattern contains wildcards
             if pattern.starts_with('*') && pattern.ends_with('*') {
-                // "*rust*" のようなパターン
+                // Pattern like "*rust*"
                 let middle = pattern.trim_start_matches('*').trim_end_matches('*');
                 return file_name.contains(middle);
             } else if pattern.starts_with('*') {
-                // "*rust" のようなパターン
+                // Pattern like "*rust"
                 let suffix = pattern.trim_start_matches('*');
                 return file_name.ends_with(suffix);
             } else if pattern.ends_with('*') {
-                // "rust*" のようなパターン
+                // Pattern like "rust*"
                 let prefix = pattern.trim_end_matches('*');
                 return file_name.starts_with(prefix);
             }
         }
 
-        // 完全一致
+        // Exact match
         file_name == pattern
     }
 
-    /// ルール設定を含むMDC形式のコンテンツを作成
+    /// Create MDC format content with rule settings
     fn create_mdc_content_with_rule(
         &self,
         markdown_content: &str,
@@ -216,9 +216,9 @@ impl CursorAgent {
         format!("---\n{}---\n\n{}", frontmatter, markdown_content)
     }
 
-    /// ルール設定を含むYAML frontmatterを作成
+    /// Create YAML frontmatter with rule settings
     fn create_frontmatter_with_rule(&self, rule: &crate::types::CursorSplitRule) -> String {
-        // 優先順位: manual > alwaysApply > globs > description
+        // Priority: manual > alwaysApply > globs > description
         if rule.manual == Some(true) {
             // Manual: description:, globs:, alwaysApply: false
             "description:\nglobs:\nalwaysApply: false\n".to_string()
@@ -226,7 +226,7 @@ impl CursorAgent {
             // Always Apply: description:, globs:, alwaysApply: true
             "description:\nglobs:\nalwaysApply: true\n".to_string()
         } else if let Some(globs) = &rule.globs {
-            // Auto Attached: description:, globs: 値, alwaysApply: false
+            // Auto Attached: description:, globs: value, alwaysApply: false
             let globs_value = match globs.len() {
                 1 => format!(" {}", globs[0]),
                 len if len > 1 => {
@@ -237,14 +237,14 @@ impl CursorAgent {
                         .join("\n");
                     format!("\n{}", globs_list)
                 }
-                _ => "".to_string(), // 0の場合は空
+                _ => "".to_string(), // Empty for 0 case
             };
             format!("description:\nglobs:{}\nalwaysApply: false\n", globs_value)
         } else if let Some(desc) = &rule.description {
-            // Agent Requested: description: 値, globs:, alwaysApply: false
+            // Agent Requested: description: value, globs:, alwaysApply: false
             format!("description: {}\nglobs:\nalwaysApply: false\n", desc)
         } else {
-            // デフォルト: Always Apply
+            // Default: Always Apply
             "description:\nglobs:\nalwaysApply: true\n".to_string()
         }
     }
@@ -261,7 +261,7 @@ mod tests {
         AIContextConfig {
             version: "1.0".to_string(),
             output_mode: Some(output_mode),
-            include_filenames: Some(true), // テスト用にヘッダーを有効化
+            include_filenames: Some(true), // Enable headers for testing
             base_docs_dir: base_dir.to_string(),
             agents: AgentConfig::default(),
         }
@@ -292,7 +292,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test file
         fs::write(docs_path.join("test.md"), "# Test Content\nThis is a test.")
             .await
             .unwrap();
@@ -318,7 +318,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // 複数のテスト用ファイルを作成
+        // Create multiple test files
         fs::write(docs_path.join("file1.md"), "Content 1")
             .await
             .unwrap();
@@ -333,7 +333,7 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 2);
 
-        // ファイル名とパスをチェック
+        // Check filenames and paths
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
         let expected_path1 = format!(
             "{}/.cursor/rules/file1.mdc",
@@ -346,7 +346,7 @@ mod tests {
         assert!(paths.contains(&&expected_path1));
         assert!(paths.contains(&&expected_path2));
 
-        // 内容をチェック
+        // Check content
         for file in &files {
             assert!(file.content.contains("---"));
             assert!(file.content.contains("alwaysApply: true"));
@@ -366,7 +366,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // サブディレクトリを作成
+        // Create subdirectory
         let sub_dir = docs_path.join("subdir");
         fs::create_dir(&sub_dir).await.unwrap();
         fs::write(sub_dir.join("nested.md"), "Nested content")
@@ -380,7 +380,7 @@ mod tests {
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
 
-        // パス区切り文字がアンダースコアに変換されているかチェック
+        // Check if path separators are converted to underscores
         let expected_path = format!(
             "{}/.cursor/rules/subdir_nested.mdc",
             temp_dir.path().to_string_lossy()
@@ -410,12 +410,12 @@ mod tests {
 
         let frontmatter = agent.create_frontmatter();
 
-        // YAML形式であることを確認
+        // Confirm it's YAML format
         assert!(frontmatter.contains("alwaysApply:"));
         assert!(frontmatter.contains("description:"));
         assert!(frontmatter.contains("globs:"));
 
-        // パース可能であることを確認
+        // Confirm it's parseable
         let parsed: serde_yaml::Value = serde_yaml::from_str(&frontmatter).unwrap();
         assert!(parsed.is_mapping());
     }
@@ -428,16 +428,16 @@ mod tests {
         let agent =
             CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
-        // ディレクトリが存在しない状態から開始
+        // Start with directory not existing
         assert!(!rules_dir.exists());
 
-        // prepare_rules_directory を実行
+        // Execute prepare_rules_directory
         agent
             .prepare_rules_directory(&rules_dir.to_string_lossy())
             .await
             .unwrap();
 
-        // ディレクトリが作成されたことを確認
+        // Confirm directory was created
         assert!(rules_dir.exists());
         assert!(rules_dir.is_dir());
     }
@@ -450,26 +450,26 @@ mod tests {
         let agent =
             CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
-        // ディレクトリを作成
+        // Create directory
         fs::create_dir_all(&rules_dir).await.unwrap();
 
-        // 既存のmdcファイルを作成
+        // Create existing mdc file
         let existing_mdc = rules_dir.join("old_file.mdc");
         let other_file = rules_dir.join("keep_me.txt");
         fs::write(&existing_mdc, "old content").await.unwrap();
         fs::write(&other_file, "keep this").await.unwrap();
 
-        // ファイルが存在することを確認
+        // Confirm files exist
         assert!(existing_mdc.exists());
         assert!(other_file.exists());
 
-        // prepare_rules_directory を実行
+        // Execute prepare_rules_directory
         agent
             .prepare_rules_directory(&rules_dir.to_string_lossy())
             .await
             .unwrap();
 
-        // mdcファイルは削除され、他のファイルは残っていることを確認
+        // Confirm mdc file is deleted and other file remains
         assert!(!existing_mdc.exists());
         assert!(other_file.exists());
     }
@@ -488,7 +488,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test file
         fs::write(docs_path.join("test.md"), "# Test Content")
             .await
             .unwrap();
@@ -499,7 +499,7 @@ mod tests {
 
         let files = agent.generate().await.unwrap();
 
-        // 正しいパスが生成されることを確認
+        // Correct path should be generated
         assert_eq!(files.len(), 1);
         let expected_path = format!(
             "{}/.cursor/rules/context.mdc",
@@ -514,7 +514,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // 複数のテスト用ファイルを作成
+        // Create multiple test files
         fs::write(docs_path.join("file1.md"), "Content 1")
             .await
             .unwrap();
@@ -528,7 +528,7 @@ mod tests {
 
         let files = agent.generate().await.unwrap();
 
-        // 正しいパスが生成されることを確認
+        // Correct paths should be generated
         assert_eq!(files.len(), 2);
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
         let expected_path1 = format!(
@@ -543,7 +543,7 @@ mod tests {
         assert!(paths.contains(&&expected_path2));
     }
 
-    // === split_config機能のテスト ===
+    // === split_config functionality tests ===
 
     #[tokio::test]
     async fn test_split_config_manual_rule() {
@@ -552,7 +552,7 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let docs_path = temp_dir.path();
 
-        // テスト用ファイルを作成
+        // Create test file
         std::fs::write(docs_path.join("manual.md"), "Manual rule content").unwrap();
 
         let mut config = create_test_config(&docs_path.to_string_lossy(), OutputMode::Split);
@@ -575,7 +575,7 @@ mod tests {
             CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
-        // manual.mdcファイルが生成されることを確認
+        // Confirm manual.mdc file is generated
         let manual_file = files.iter().find(|f| f.path.contains("manual")).unwrap();
         assert!(manual_file.content.contains("description:"));
         assert!(manual_file.content.contains("globs:"));
@@ -786,19 +786,19 @@ mod tests {
         let config = create_test_config("./docs", OutputMode::Split);
         let agent = CursorAgent::new(config);
 
-        // ワイルドカード前後のテスト
+        // Test before and after wildcards
         assert!(agent.simple_pattern_match("architecture.md", "*architecture*"));
         assert!(agent.simple_pattern_match("rust-guide.md", "*rust*"));
 
-        // ワイルドカード前のみ
+        // Test only before
         assert!(agent.simple_pattern_match("test.md", "*test.md"));
         assert!(!agent.simple_pattern_match("test-file.md", "*test.md"));
 
-        // ワイルドカード後のみ
+        // Test only after
         assert!(agent.simple_pattern_match("config.md", "config*"));
         assert!(!agent.simple_pattern_match("my-config.md", "config*"));
 
-        // 完全一致
+        // Exact match
         assert!(agent.simple_pattern_match("exact.md", "exact.md"));
         assert!(!agent.simple_pattern_match("exact-file.md", "exact.md"));
     }
@@ -834,7 +834,7 @@ mod tests {
             CursorAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
         let files = agent.generate().await.unwrap();
 
-        // manualが最優先なので、Manual形式になるべき
+        // manual should be highest priority, should be in Manual format
         let priority_file = files.iter().find(|f| f.path.contains("priority")).unwrap();
         assert!(priority_file.content.contains("description:"));
         assert!(priority_file.content.contains("globs:"));
