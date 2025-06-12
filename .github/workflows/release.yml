@@ -111,12 +111,56 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           path: dist
+      - name: Generate release notes
+        id: generate_notes
+        run: |
+          echo "Generating release notes..."
+          
+          # Get the latest release tag (excluding the current one)
+          LATEST_TAG=$(git tag -l --sort=-version:refname | grep -v "^${{ github.event.inputs.version }}$" | head -n 1)
+          
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No previous release found, generating notes from first commit"
+            COMPARE_FROM=$(git rev-list --max-parents=0 HEAD)
+          else
+            echo "Latest release: $LATEST_TAG"
+            COMPARE_FROM="$LATEST_TAG"
+          fi
+          
+          # Generate PR list using GitHub CLI
+          RELEASE_NOTES="## What's Changed"$'\n'
+          
+          # Get merged PRs since last release
+          PR_LIST=$(gh pr list --state merged --base main --json number,title,mergedAt,url --jq '.[] | select(.mergedAt > "'$(git log -1 --format=%cI $COMPARE_FROM 2>/dev/null || echo "1970-01-01T00:00:00Z")'") | "- \(.title) #\(.number)"')
+          
+          if [ -n "$PR_LIST" ]; then
+            RELEASE_NOTES="$RELEASE_NOTES"$'\n'"$PR_LIST"
+          else
+            RELEASE_NOTES="$RELEASE_NOTES"$'\n'"- No merged pull requests since last release"
+          fi
+          
+          # Add commit comparison link
+          if [ -n "$LATEST_TAG" ]; then
+            RELEASE_NOTES="$RELEASE_NOTES"$'\n'$'\n'"**Full Changelog**: https://github.com/${{ github.repository }}/compare/$LATEST_TAG...${{ github.event.inputs.version }}"
+          fi
+          
+          # Save to file and environment
+          echo "$RELEASE_NOTES" > release_notes.md
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_NOTES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
+          body: ${{ env.RELEASE_NOTES }}
           files: dist/**/*
