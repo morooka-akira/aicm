@@ -12,7 +12,7 @@ A unified CLI tool built in Rust to automatically generate context files for mul
 
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/morooka-akira/ai-context-management/rust.yml?branch=main)](https://github.com/morooka-akira/ai-context-management/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/morooka-akira/aicm/rust.yml?branch=main)](https://github.com/morooka-akira/aicm/actions)
 
 [Installation](#installation) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Testing](#testing) • [Development](#development)
 
@@ -24,13 +24,13 @@ A unified CLI tool built in Rust to automatically generate context files for mul
 
 ### 🎯 Supported Tools
 
-| Tool | Output Files | Features |
-|------|-------------|----------|
-| **✅ Cursor** | `.cursor/rules/*.mdc` | Split_config support, rule types |
-| **✅ Cline** | `.clinerules/*.md` | Simple markdown files |
-| **✅ GitHub Copilot** | `.github/instructions/*.instructions.md` | ApplyTo options, frontmatter |
-| **✅ Claude Code** | `CLAUDE.md` | Merged context file |
-| **✅ OpenAI Codex** | `AGENTS.md` | Merged context file |
+| Tool                  | Output Files                             | Features                         |
+| --------------------- | ---------------------------------------- | -------------------------------- |
+| **✅ Cursor**         | `.cursor/rules/*.mdc`                    | Split_config support, rule types |
+| **✅ Cline**          | `.clinerules/*.md`                       | Simple markdown files            |
+| **✅ GitHub Copilot** | `.github/instructions/*.instructions.md` | ApplyTo options, frontmatter     |
+| **✅ Claude Code**    | `CLAUDE.md`                              | Merged context file              |
+| **✅ OpenAI Codex**   | `AGENTS.md`                              | Merged context file              |
 
 ## 🚀 Installation
 
@@ -41,11 +41,11 @@ A unified CLI tool built in Rust to automatically generate context files for mul
 cargo install aicm
 
 # Install directly from GitHub
-cargo install --git https://github.com/morooka-akira/ai-context-management
+cargo install --git https://github.com/morooka-akira/aicm
 
 # Local build and install
-git clone https://github.com/morooka-akira/ai-context-management
-cd ai-context-management
+git clone https://github.com/morooka-akira/aicm
+cd aicm
 cargo install --path .
 ```
 
@@ -75,18 +75,18 @@ aicm validate
 
 ### Command Reference
 
-| Command | Options | Description |
-|---------|---------|-------------|
-| `aicm init` | - | Initialize configuration template in current directory |
-| `aicm generate` | `--agent <name>`, `--config <path>`, `-c <path>` | Generate context files for AI agents |
-| `aicm validate` | `--config <path>`, `-c <path>` | Validate configuration file syntax and settings |
+| Command         | Options                                          | Description                                            |
+| --------------- | ------------------------------------------------ | ------------------------------------------------------ |
+| `aicm init`     | -                                                | Initialize configuration template in current directory |
+| `aicm generate` | `--agent <name>`, `--config <path>`, `-c <path>` | Generate context files for AI agents                   |
+| `aicm validate` | `--config <path>`, `-c <path>`                   | Validate configuration file syntax and settings        |
 
 #### Option Details
 
-| Option | Short | Type | Description |
-|--------|-------|------|-------------|
-| `--agent <name>` | - | string | Generate files for specific agent only (cursor, cline, github, claude, codex) |
-| `--config <path>` | `-c` | path | Use alternative configuration file instead of aicm-config.yml |
+| Option            | Short | Type   | Description                                                                   |
+| ----------------- | ----- | ------ | ----------------------------------------------------------------------------- |
+| `--agent <name>`  | -     | string | Generate files for specific agent only (cursor, cline, github, claude, codex) |
+| `--config <path>` | `-c`  | path   | Use alternative configuration file instead of aicm-config.yml                 |
 
 ## 📖 Configuration
 
@@ -97,8 +97,8 @@ Create an `aicm-config.yml` file in your project root:
 ```yaml
 # aicm-config.yml
 version: "1.0"
-output_mode: split         # merged | split
-include_filenames: false   # Include file name headers in merged mode
+output_mode: split # merged | split
+include_filenames: false # Include file name headers in merged mode
 base_docs_dir: ./ai-docs
 
 # Simple agent configuration
@@ -128,7 +128,7 @@ agents:
       rules:
         - file_patterns: ["*project*", "*overview*"]
           alwaysApply: true
-        - file_patterns: ["*architecture*", "*design*"] 
+        - file_patterns: ["*architecture*", "*design*"]
           globs: ["**/*.rs", "**/*.ts"]
         - file_patterns: ["*development*", "*rules*"]
           description: "Development guidelines and coding standards"
@@ -167,23 +167,23 @@ aicm generate --agent cursor --config custom.yaml
 
 ### Configuration Reference
 
-| Key | Type | Required | Default | Description |
-|-----|------|----------|---------|-------------|
-| `version` | string | ✓ | `"1.0"` | Configuration file version |
-| `output_mode` | enum(split/merged) | ✓ | `"split"` | Document output mode |
-| `base_docs_dir` | string | ✓ | `"./ai-context"` | Base documentation directory |
-| `include_filenames` | boolean | - | `false` | Include file name headers in merged mode |
-| `agents` | map | ✓ | - | Agent configuration block |
-| `agents.<name>.enabled` | boolean | - | `true` | Enable/disable agent |
-| `agents.<name>.output_mode` | string | - | `"split"` | Agent-specific output mode |
-| `agents.<name>.include_filenames` | boolean | - | `false` | Agent-specific filename headers |
-| `agents.<name>.split_config.rules` | list | - | - | File splitting rules configuration |
-| `agents.<name>.split_config.rules[].file_patterns` | list<string> | ✓ | `["*project*"]` | File matching patterns (glob) |
-| `agents.cursor.split_config.rules[].alwaysApply` | boolean | - | `false` | Always apply rule |
-| `agents.cursor.split_config.rules[].description` | string | - | - | Rule description |
-| `agents.cursor.split_config.rules[].manual` | boolean | - | `false` | Manual reference only |
-| `agents.cursor.split_config.rules[].globs` | list<string> | - | - | Auto-attach file patterns |
-| `agents.github.split_config.rules[].apply_to` | list<string> | - | - | Target file patterns for application |
+| Key                                                | Type               | Required | Default          | Description                              |
+| -------------------------------------------------- | ------------------ | -------- | ---------------- | ---------------------------------------- |
+| `version`                                          | string             | ✓        | `"1.0"`          | Configuration file version               |
+| `output_mode`                                      | enum(split/merged) | ✓        | `"split"`        | Document output mode                     |
+| `base_docs_dir`                                    | string             | ✓        | `"./ai-context"` | Base documentation directory             |
+| `include_filenames`                                | boolean            | -        | `false`          | Include file name headers in merged mode |
+| `agents`                                           | map                | ✓        | -                | Agent configuration block                |
+| `agents.<name>.enabled`                            | boolean            | -        | `true`           | Enable/disable agent                     |
+| `agents.<name>.output_mode`                        | string             | -        | `"split"`        | Agent-specific output mode               |
+| `agents.<name>.include_filenames`                  | boolean            | -        | `false`          | Agent-specific filename headers          |
+| `agents.<name>.split_config.rules`                 | list               | -        | -                | File splitting rules configuration       |
+| `agents.<name>.split_config.rules[].file_patterns` | list<string>       | ✓        | `["*project*"]`  | File matching patterns (glob)            |
+| `agents.cursor.split_config.rules[].alwaysApply`   | boolean            | -        | `false`          | Always apply rule                        |
+| `agents.cursor.split_config.rules[].description`   | string             | -        | -                | Rule description                         |
+| `agents.cursor.split_config.rules[].manual`        | boolean            | -        | `false`          | Manual reference only                    |
+| `agents.cursor.split_config.rules[].globs`         | list<string>       | -        | -                | Auto-attach file patterns                |
+| `agents.github.split_config.rules[].apply_to`      | list<string>       | -        | -                | Target file patterns for application     |
 
 ## 🏗️ Project Structure
 
@@ -203,6 +203,7 @@ your-project/
 ## 📤 Generated Output
 
 ### Cursor
+
 ```
 .cursor/rules/
 ├── project-overview.mdc      # alwaysApply: true
@@ -211,6 +212,7 @@ your-project/
 ```
 
 ### GitHub Copilot
+
 ```
 .github/instructions/
 ├── backend.instructions.md   # applyTo: "**/*.rs,**/*.toml"
@@ -218,6 +220,7 @@ your-project/
 ```
 
 ### Other Agents
+
 ```
 .clinerules/context.md        # Cline (merged)
 CLAUDE.md                     # Claude Code (merged)
@@ -246,8 +249,8 @@ cargo test --test integration_test
 ### Setup
 
 ```bash
-git clone https://github.com/morooka-akira/ai-context-management
-cd ai-context-management
+git clone https://github.com/morooka-akira/aicm
+cd aicm
 cargo build
 cargo test
 ```
@@ -313,8 +316,8 @@ This project is built with excellent Rust ecosystem tools:
 
 ## 📞 Support
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/morooka-akira/ai-context-management/issues)
-- 💡 **Feature Requests**: [GitHub Issues](https://github.com/morooka-akira/ai-context-management/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/morooka-akira/ai-context-management/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/morooka-akira/aicm/issues)
+- 💡 **Feature Requests**: [GitHub Issues](https://github.com/morooka-akira/aicm/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/morooka-akira/aicm/discussions)
 
 ---

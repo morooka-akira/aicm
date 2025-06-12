@@ -6,13 +6,13 @@
 
 </div>
 
-複数のAIコーディングエージェント用のコンテキストファイルを統一設定から自動生成するRust製CLIツール
+複数の AI コーディングエージェント用のコンテキストファイルを統一設定から自動生成する Rust 製 CLI ツール
 
 <div align="center">
 
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/morooka-akira/ai-context-management/rust.yml?branch=main)](https://github.com/morooka-akira/ai-context-management/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/morooka-akira/aicm/rust.yml?branch=main)](https://github.com/morooka-akira/aicm/actions)
 
 [インストール](#インストール) • [クイックスタート](#クイックスタート) • [設定](#設定) • [テスト](#テスト) • [開発](#開発)
 
@@ -20,39 +20,39 @@
 
 ## ✨ 概要
 
-**aicm**は、人気のあるAIコーディングツール向けのコンテキスト管理を一元化することで、AI支援開発を効率化します。各ツール用に個別の設定ファイルを維持する代わりに、プロジェクトコンテキストを一度定義するだけで、aicmがすべてのAIアシスタント用の適切な形式を生成します。
+**aicm**は、人気のある AI コーディングツール向けのコンテキスト管理を一元化することで、AI 支援開発を効率化します。各ツール用に個別の設定ファイルを維持する代わりに、プロジェクトコンテキストを一度定義するだけで、aicm がすべての AI アシスタント用の適切な形式を生成します。
 
 ### 🎯 サポート対象ツール
 
-| ツール | 出力ファイル | 機能 |
-|--------|-------------|------|
-| **✅ Cursor** | `.cursor/rules/*.mdc` | Split_config対応、ルールタイプ |
-| **✅ Cline** | `.clinerules/*.md` | シンプルなマークダウンファイル |
-| **✅ GitHub Copilot** | `.github/instructions/*.instructions.md` | ApplyToオプション、フロントマター |
-| **✅ Claude Code** | `CLAUDE.md` | 統合コンテキストファイル |
-| **✅ OpenAI Codex** | `AGENTS.md` | 統合コンテキストファイル |
+| ツール                | 出力ファイル                             | 機能                               |
+| --------------------- | ---------------------------------------- | ---------------------------------- |
+| **✅ Cursor**         | `.cursor/rules/*.mdc`                    | Split_config 対応、ルールタイプ    |
+| **✅ Cline**          | `.clinerules/*.md`                       | シンプルなマークダウンファイル     |
+| **✅ GitHub Copilot** | `.github/instructions/*.instructions.md` | ApplyTo オプション、フロントマター |
+| **✅ Claude Code**    | `CLAUDE.md`                              | 統合コンテキストファイル           |
+| **✅ OpenAI Codex**   | `AGENTS.md`                              | 統合コンテキストファイル           |
 
 ## 🚀 インストール
 
-### Cargoを使用（推奨）
+### Cargo を使用（推奨）
 
 ```bash
 # crates.ioからインストール（近日公開予定）
 cargo install aicm
 
 # GitHubから直接インストール
-cargo install --git https://github.com/morooka-akira/ai-context-management
+cargo install --git https://github.com/morooka-akira/aicm
 
 # ローカルビルド・インストール
-git clone https://github.com/morooka-akira/ai-context-management
-cd ai-context-management
+git clone https://github.com/morooka-akira/aicm
+cd aicm
 cargo install --path .
 ```
 
 ### 必要な環境
 
-- Rust 1.70.0以上
-- Cargo（Rustと一緒にインストールされます）
+- Rust 1.70.0 以上
+- Cargo（Rust と一緒にインストールされます）
 
 ## ⚡ クイックスタート
 
@@ -75,18 +75,18 @@ aicm validate
 
 ### コマンドリファレンス
 
-| コマンド | オプション | 説明 |
-|----------|------------|------|
-| `aicm init` | - | 現在のディレクトリに設定テンプレートを初期化 |
-| `aicm generate` | `--agent <name>`, `--config <path>`, `-c <path>` | AIエージェント用コンテキストファイルを生成 |
-| `aicm validate` | `--config <path>`, `-c <path>` | 設定ファイルの構文と設定を検証 |
+| コマンド        | オプション                                       | 説明                                         |
+| --------------- | ------------------------------------------------ | -------------------------------------------- |
+| `aicm init`     | -                                                | 現在のディレクトリに設定テンプレートを初期化 |
+| `aicm generate` | `--agent <name>`, `--config <path>`, `-c <path>` | AI エージェント用コンテキストファイルを生成  |
+| `aicm validate` | `--config <path>`, `-c <path>`                   | 設定ファイルの構文と設定を検証               |
 
 #### オプション詳細
 
-| オプション | 短縮形 | タイプ | 説明 |
-|------------|--------|--------|------|
-| `--agent <name>` | - | string | 特定のエージェントのみファイル生成（cursor, cline, github, claude, codex） |
-| `--config <path>` | `-c` | path | aicm-config.ymlの代わりに代替設定ファイルを使用 |
+| オプション        | 短縮形 | タイプ | 説明                                                                       |
+| ----------------- | ------ | ------ | -------------------------------------------------------------------------- |
+| `--agent <name>`  | -      | string | 特定のエージェントのみファイル生成（cursor, cline, github, claude, codex） |
+| `--config <path>` | `-c`   | path   | aicm-config.yml の代わりに代替設定ファイルを使用                           |
 
 ## 📖 設定
 
@@ -97,8 +97,8 @@ aicm validate
 ```yaml
 # aicm-config.yml
 version: "1.0"
-output_mode: split         # merged | split
-include_filenames: false   # mergedモードでファイル名ヘッダーを含める
+output_mode: split # merged | split
+include_filenames: false # mergedモードでファイル名ヘッダーを含める
 base_docs_dir: ./ai-docs
 
 # シンプルなエージェント設定
@@ -128,7 +128,7 @@ agents:
       rules:
         - file_patterns: ["*project*", "*overview*"]
           alwaysApply: true
-        - file_patterns: ["*architecture*", "*design*"] 
+        - file_patterns: ["*architecture*", "*design*"]
           globs: ["**/*.rs", "**/*.ts"]
         - file_patterns: ["*development*", "*rules*"]
           description: "開発ガイドラインとコーディング規約"
@@ -167,23 +167,23 @@ aicm generate --agent cursor --config custom.yaml
 
 ### 設定リファレンス
 
-| キー | タイプ | 必須 | デフォルト | 説明 |
-|------|--------|------|------------|------|
-| `version` | string | ✓ | `"1.0"` | 設定ファイルバージョン |
-| `output_mode` | enum(split/merged) | ✓ | `"split"` | ドキュメント出力モード |
-| `base_docs_dir` | string | ✓ | `"./ai-context"` | ベースドキュメントディレクトリ |
-| `include_filenames` | boolean | - | `false` | mergedモードでファイル名ヘッダーを含める |
-| `agents` | map | ✓ | - | エージェント設定ブロック |
-| `agents.<name>.enabled` | boolean | - | `true` | エージェントの有効/無効 |
-| `agents.<name>.output_mode` | string | - | `"split"` | エージェント固有の出力モード |
-| `agents.<name>.include_filenames` | boolean | - | `false` | エージェント固有のファイル名ヘッダー |
-| `agents.<name>.split_config.rules` | list | - | - | ファイル分割ルール設定 |
-| `agents.<name>.split_config.rules[].file_patterns` | list<string> | ✓ | `["*project*"]` | ファイルマッチングパターン（glob） |
-| `agents.cursor.split_config.rules[].alwaysApply` | boolean | - | `false` | 常に適用するルール |
-| `agents.cursor.split_config.rules[].description` | string | - | - | ルールの説明 |
-| `agents.cursor.split_config.rules[].manual` | boolean | - | `false` | 手動参照のみ |
-| `agents.cursor.split_config.rules[].globs` | list<string> | - | - | 自動添付ファイルパターン |
-| `agents.github.split_config.rules[].apply_to` | list<string> | - | - | 適用対象ファイルパターン |
+| キー                                               | タイプ             | 必須 | デフォルト       | 説明                                      |
+| -------------------------------------------------- | ------------------ | ---- | ---------------- | ----------------------------------------- |
+| `version`                                          | string             | ✓    | `"1.0"`          | 設定ファイルバージョン                    |
+| `output_mode`                                      | enum(split/merged) | ✓    | `"split"`        | ドキュメント出力モード                    |
+| `base_docs_dir`                                    | string             | ✓    | `"./ai-context"` | ベースドキュメントディレクトリ            |
+| `include_filenames`                                | boolean            | -    | `false`          | merged モードでファイル名ヘッダーを含める |
+| `agents`                                           | map                | ✓    | -                | エージェント設定ブロック                  |
+| `agents.<name>.enabled`                            | boolean            | -    | `true`           | エージェントの有効/無効                   |
+| `agents.<name>.output_mode`                        | string             | -    | `"split"`        | エージェント固有の出力モード              |
+| `agents.<name>.include_filenames`                  | boolean            | -    | `false`          | エージェント固有のファイル名ヘッダー      |
+| `agents.<name>.split_config.rules`                 | list               | -    | -                | ファイル分割ルール設定                    |
+| `agents.<name>.split_config.rules[].file_patterns` | list<string>       | ✓    | `["*project*"]`  | ファイルマッチングパターン（glob）        |
+| `agents.cursor.split_config.rules[].alwaysApply`   | boolean            | -    | `false`          | 常に適用するルール                        |
+| `agents.cursor.split_config.rules[].description`   | string             | -    | -                | ルールの説明                              |
+| `agents.cursor.split_config.rules[].manual`        | boolean            | -    | `false`          | 手動参照のみ                              |
+| `agents.cursor.split_config.rules[].globs`         | list<string>       | -    | -                | 自動添付ファイルパターン                  |
+| `agents.github.split_config.rules[].apply_to`      | list<string>       | -    | -                | 適用対象ファイルパターン                  |
 
 ## 🏗️ プロジェクト構造
 
@@ -203,6 +203,7 @@ your-project/
 ## 📤 生成される出力
 
 ### Cursor
+
 ```
 .cursor/rules/
 ├── project-overview.mdc      # alwaysApply: true
@@ -211,6 +212,7 @@ your-project/
 ```
 
 ### GitHub Copilot
+
 ```
 .github/instructions/
 ├── backend.instructions.md   # applyTo: "**/*.rs,**/*.toml"
@@ -218,6 +220,7 @@ your-project/
 ```
 
 ### その他のエージェント
+
 ```
 .clinerules/context.md        # Cline（merged）
 CLAUDE.md                     # Claude Code（merged）
@@ -246,8 +249,8 @@ cargo test --test integration_test
 ### セットアップ
 
 ```bash
-git clone https://github.com/morooka-akira/ai-context-management
-cd ai-context-management
+git clone https://github.com/morooka-akira/aicm
+cd aicm
 cargo build
 cargo test
 ```
@@ -292,7 +295,7 @@ src/
 
 ### 開発ガイドライン
 
-- Rustのベストプラクティスとイディオムに従う
+- Rust のベストプラクティスとイディオムに従う
 - 新機能に包括的なテストを追加
 - ユーザー向け変更についてはドキュメントを更新
 - 提出前に完全なテストスイートを実行
@@ -300,11 +303,11 @@ src/
 
 ## 📄 ライセンス
 
-このプロジェクトはMITライセンスの下でライセンスされています - 詳細は[LICENSE](LICENSE)ファイルを参照してください。
+このプロジェクトは MIT ライセンスの下でライセンスされています - 詳細は[LICENSE](LICENSE)ファイルを参照してください。
 
 ## 🙏 謝辞
 
-このプロジェクトは優れたRustエコシステムツールで構築されています：
+このプロジェクトは優れた Rust エコシステムツールで構築されています：
 
 - [clap](https://github.com/clap-rs/clap) - コマンドライン引数解析
 - [tokio](https://github.com/tokio-rs/tokio) - 非同期ランタイム
@@ -313,8 +316,8 @@ src/
 
 ## 📞 サポート
 
-- 🐛 **バグ報告**: [GitHub Issues](https://github.com/morooka-akira/ai-context-management/issues)
-- 💡 **機能要求**: [GitHub Issues](https://github.com/morooka-akira/ai-context-management/issues)
-- 💬 **ディスカッション**: [GitHub Discussions](https://github.com/morooka-akira/ai-context-management/discussions)
+- 🐛 **バグ報告**: [GitHub Issues](https://github.com/morooka-akira/aicm/issues)
+- 💡 **機能要求**: [GitHub Issues](https://github.com/morooka-akira/aicm/issues)
+- 💬 **ディスカッション**: [GitHub Discussions](https://github.com/morooka-akira/aicm/discussions)
 
 ---
