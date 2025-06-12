@@ -11,6 +11,12 @@ on:
         description: "Semantic version"
         required: true
         type: string
+  workflow_call:
+    inputs:
+      version:
+        description: "Semantic version"
+        required: true
+        type: string
 
 jobs:
   test:
