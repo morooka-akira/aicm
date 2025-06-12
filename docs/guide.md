@@ -35,7 +35,7 @@ ai-context/
 ├── agents/          # 特定AIツール用のルール
 │   ├── cursor.md
 │   └── github.md
-└── ai-context.yaml  # 設定ファイル
+└── aicm-config.yml  # 設定ファイル
 ```
 
 ### 2. ルールを書く
@@ -91,7 +91,7 @@ instructions.md               # GitHub Copilot用（今後対応）
 CLAUDE.md                     # Claude Code用（今後対応）
 ```
 
-## 設定ファイル（ai-context.yaml）の基本
+## 設定ファイル（aicm-config.yml）の基本
 
 ```yaml
 version: "1.0"
@@ -351,10 +351,10 @@ split_config:
 
 ### Q: チームで設定を共有したい
 
-**A:** `ai-context/` ディレクトリと `ai-context.yaml` を Git に含めてください
+**A:** `ai-context/` ディレクトリと `aicm-config.yml` を Git に含めてください
 
 ```bash
-git add ai-context/ ai-context.yaml
+git add ai-context/ aicm-config.yml
 git commit -m "Add AI context configuration"
 ```
 

@@ -42,7 +42,7 @@
 - **必須機能**:
 
   - `docs/` ディレクトリの自動作成
-  - 設定ファイル `ai-context.yaml` のテンプレート生成
+  - 設定ファイル `aicm-config.yml` のテンプレート生成
   - README.md ファイルの生成
 
 - **シンプルなディレクトリ構造**:
@@ -53,7 +53,7 @@ docs/
 ├── overview.md       # プロジェクト概要
 ├── rules.md          # コーディングルール
 └── *.md              # 任意のmarkdownファイル
-ai-context.yaml       # 設定ファイル
+aicm-config.yml       # 設定ファイル
 ```
 
 ##### 2.2.2 生成機能 (`aicm generate`)
@@ -107,7 +107,7 @@ ai-context.yaml       # 設定ファイル
 ##### 2.4.1 設定ファイル仕様（シンプル版）
 
 - **形式**: YAML
-- **ファイル名**: `ai-context.yaml`
+- **ファイル名**: `aicm-config.yml`
 - **必須項目**:
   - `version`: 設定ファイルバージョン（例: "1.0"）
   - `output_mode`: `merged` | `split`
