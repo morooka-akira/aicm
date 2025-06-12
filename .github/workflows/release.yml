@@ -93,15 +93,17 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
+          TARGET=$(rustc -vV | sed -n 's|host: ||p')
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp target/release/aicm.exe dist/aicm-${{ runner.os }}-${{ runner.arch }}.exe
+            cp target/release/aicm.exe dist/aicm-${TARGET}.exe
           else
-            cp target/release/aicm dist/aicm-${{ runner.os }}-${{ runner.arch }}
+            cp target/release/aicm dist/aicm-${TARGET}
           fi
+          echo "TARGET=${TARGET}" >> $GITHUB_ENV
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: aicm-${{ runner.os }}-${{ runner.arch }}
+          name: aicm-${{ env.TARGET }}
           path: dist/*
 
   release:
@@ -109,12 +111,85 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           path: dist
+      - name: Generate release notes
+        id: generate_notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            console.log('Generating release notes...');
+            
+            // Get all releases to find the previous one
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+            
+            // Find previous release (excluding current version if it exists)
+            const currentVersion = '${{ github.event.inputs.version }}';
+            const previousRelease = releases.find(release => 
+              release.tag_name !== currentVersion && !release.draft && !release.prerelease
+            );
+            
+            let sinceDate;
+            let compareUrl = '';
+            
+            if (previousRelease) {
+              console.log(`Previous release found: ${previousRelease.tag_name}`);
+              sinceDate = previousRelease.published_at;
+              compareUrl = `\n\n**Full Changelog**: https://github.com/${context.repo.owner}/${context.repo.repo}/compare/${previousRelease.tag_name}...${currentVersion}`;
+            } else {
+              console.log('No previous release found, using repository creation date');
+              const { data: repo } = await github.rest.repos.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo
+              });
+              sinceDate = repo.created_at;
+            }
+            
+            // Get merged PRs since the previous release
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              base: 'main',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 100
+            });
+            
+            // Filter PRs that were merged after the previous release
+            const mergedPRs = pulls.filter(pr => 
+              pr.merged_at && 
+              new Date(pr.merged_at) > new Date(sinceDate)
+            );
+            
+            // Generate release notes
+            let releaseNotes = '## What\'s Changed\n';
+            
+            if (mergedPRs.length > 0) {
+              for (const pr of mergedPRs) {
+                releaseNotes += `- ${pr.title} #${pr.number}\n`;
+              }
+            } else {
+              releaseNotes += '- No merged pull requests since last release\n';
+            }
+            
+            releaseNotes += compareUrl;
+            
+            // Set output for next step
+            core.setOutput('release_notes', releaseNotes);
+            console.log('Release notes generated successfully');
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
+          body: ${{ steps.generate_notes.outputs.release_notes }}
           files: dist/**/*
