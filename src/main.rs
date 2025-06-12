@@ -11,6 +11,7 @@ use aicm::agents::cursor::CursorAgent;
 use aicm::agents::github::GitHubAgent;
 use aicm::config::{error::ConfigError, loader::ConfigLoader};
 use aicm::types::{AIContextConfig, GeneratedFile};
+use aicm::DEFAULT_CONFIG_FILE;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::path::Path;
@@ -48,8 +49,6 @@ enum Commands {
     },
 }
 
-const CONFIG_FILE: &str = "ai-context.yaml";
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -79,12 +78,12 @@ async fn handle_init() -> Result<()> {
     println!("Initializing project...");
 
     // Check if configuration file already exists
-    if Path::new(CONFIG_FILE).exists() {
-        println!("⚠️  {} already exists", CONFIG_FILE);
+    if Path::new(DEFAULT_CONFIG_FILE).exists() {
+        println!("⚠️  {} already exists", DEFAULT_CONFIG_FILE);
     } else {
         // Create default configuration file
-        ConfigLoader::create_default(CONFIG_FILE).await?;
-        println!("✅ Created {}", CONFIG_FILE);
+        ConfigLoader::create_default(DEFAULT_CONFIG_FILE).await?;
+        println!("✅ Created {}", DEFAULT_CONFIG_FILE);
     }
 
     Ok(())
@@ -92,7 +91,9 @@ async fn handle_init() -> Result<()> {
 
 /// Handle generate command
 async fn handle_generate(agent_filter: Option<String>, config_path: Option<String>) -> Result<()> {
-    let config_file = config_path.as_deref().unwrap_or(CONFIG_FILE);
+    let config_file = config_path
+        .as_deref()
+        .unwrap_or(DEFAULT_CONFIG_FILE);
     println!("Generating context files: {}", config_file);
 
     // Load configuration file
@@ -111,7 +112,10 @@ async fn handle_generate(agent_filter: Option<String>, config_path: Option<Strin
 
     if enabled_agents.is_empty() {
         println!("❌ No enabled agents found");
-        println!("💡 Please enable agents in the agents section of ai-context.yaml");
+        println!(
+            "💡 Please enable agents in the agents section of {}",
+            DEFAULT_CONFIG_FILE
+        );
         return Ok(());
     }
 
@@ -136,7 +140,9 @@ async fn handle_generate(agent_filter: Option<String>, config_path: Option<Strin
 
 /// Handle validate command
 async fn handle_validate(config_path: Option<String>) -> Result<()> {
-    let config_file = config_path.as_deref().unwrap_or(CONFIG_FILE);
+    let config_file = config_path
+        .as_deref()
+        .unwrap_or(DEFAULT_CONFIG_FILE);
     println!("Validating configuration file: {}", config_file);
 
     let config = load_config_from_path(config_file)
@@ -335,7 +341,7 @@ invalid_yaml: [
     #[tokio::test]
     async fn test_load_config_from_path_with_default_file() {
         // Default file path test
-        let result = load_config_from_path(CONFIG_FILE).await;
+        let result = load_config_from_path(DEFAULT_CONFIG_FILE).await;
 
         // If default file exists, it should be loaded successfully, if not, FileNotFound error should be returned
         match result {
@@ -346,7 +352,7 @@ invalid_yaml: [
             }
             Err(ConfigError::FileNotFound { path }) => {
                 // If file doesn't exist, FileNotFound error should be returned
-                assert_eq!(path, CONFIG_FILE);
+                assert_eq!(path, DEFAULT_CONFIG_FILE);
             }
             Err(e) => {
                 panic!("Unexpected error type: {:?}", e);

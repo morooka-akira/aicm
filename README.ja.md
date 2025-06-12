@@ -61,7 +61,7 @@ cargo install --path .
 aicm init
 
 # 設定ファイルを編集
-vim ai-context.yaml
+vim aicm-config.yml
 
 # 有効化されたすべてのエージェント用コンテキストファイルを生成
 aicm generate
@@ -86,16 +86,16 @@ aicm validate
 | オプション | 短縮形 | タイプ | 説明 |
 |------------|--------|--------|------|
 | `--agent <name>` | - | string | 特定のエージェントのみファイル生成（cursor, cline, github, claude, codex） |
-| `--config <path>` | `-c` | path | ai-context.yamlの代わりに代替設定ファイルを使用 |
+| `--config <path>` | `-c` | path | aicm-config.ymlの代わりに代替設定ファイルを使用 |
 
 ## 📖 設定
 
 ### 基本設定
 
-プロジェクトルートに`ai-context.yaml`ファイルを作成：
+プロジェクトルートに`aicm-config.yml`ファイルを作成：
 
 ```yaml
-# ai-context.yaml
+# aicm-config.yml
 version: "1.0"
 output_mode: split         # merged | split
 include_filenames: false   # mergedモードでファイル名ヘッダーを含める
@@ -194,7 +194,7 @@ your-project/
 │   ├── 02-architecture.md
 │   ├── 03-development-rules.md
 │   └── 04-api-reference.md
-├── ai-context.yaml          # 設定ファイル
+├── aicm-config.yml          # 設定ファイル
 ├── src/
 │   └── main.rs
 └── Cargo.toml

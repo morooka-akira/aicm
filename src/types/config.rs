@@ -1,7 +1,7 @@
 /*!
  * AI Context Management Tool - Configuration Types (Simplified)
  *
- * Simplified configuration file (ai-context.yaml) type definitions
+ * Simplified configuration file (aicm-config.yml) type definitions
  */
 
 use serde::{Deserialize, Serialize};

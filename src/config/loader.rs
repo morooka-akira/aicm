@@ -84,7 +84,7 @@ mod tests {
     #[tokio::test]
     async fn test_load_valid_config() {
         let temp_dir = tempdir().unwrap();
-        let config_path = temp_dir.path().join("ai-context.yaml");
+        let config_path = temp_dir.path().join("aicm-config.yml");
 
         let valid_yaml = r#"
 version: "1.0"

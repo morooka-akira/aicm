@@ -421,19 +421,19 @@ struct Cli {
 enum Commands {
     /// Initialize a new AI context configuration
     Init {
-        #[arg(short, long, default_value = "ai-context.yaml")]
+        #[arg(short, long, default_value = "aicm-config.yml")]
         config: String,
     },
     /// Generate context files for configured agents
     Generate {
-        #[arg(short, long, default_value = "ai-context.yaml")]
+        #[arg(short, long, default_value = "aicm-config.yml")]
         config: String,
         #[arg(short, long)]
         agent: Option<String>,
     },
     /// Validate configuration file
     Validate {
-        #[arg(short, long, default_value = "ai-context.yaml")]
+        #[arg(short, long, default_value = "aicm-config.yml")]
         config: String,
     },
 }
@@ -632,7 +632,7 @@ mod tests {
     #[tokio::test]
     async fn test_config_loading() {
         let temp_dir = TempDir::new().unwrap();
-        let config_path = temp_dir.path().join("ai-context.yaml");
+        let config_path = temp_dir.path().join("aicm-config.yml");
 
         let config = create_test_config();
         ConfigLoader::save_config(&config, &config_path).await.unwrap();
@@ -656,11 +656,11 @@ async fn test_full_workflow() {
     std::env::set_current_dir(&temp_dir).unwrap();
 
     // 初期化
-    let result = handle_init("ai-context.yaml").await;
+    let result = handle_init("aicm-config.yml").await;
     assert!(result.is_ok());
 
     // 生成
-    let result = handle_generate("ai-context.yaml", Some("cursor")).await;
+    let result = handle_generate("aicm-config.yml", Some("cursor")).await;
     assert!(result.is_ok());
 
     // 出力ファイルの確認
