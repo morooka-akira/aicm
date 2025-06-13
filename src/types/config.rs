@@ -115,6 +115,9 @@ pub struct CursorAgentConfig {
     /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
+    /// Base documentation directory (optional, overrides global setting)
+    #[serde(default)]
+    pub base_docs_dir: Option<String>,
     /// Detailed settings for split mode (optional)
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub split_config: Option<CursorSplitConfig>,
@@ -177,6 +180,9 @@ pub struct ClineAgentConfig {
     /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
+    /// Base documentation directory (optional, overrides global setting)
+    #[serde(default)]
+    pub base_docs_dir: Option<String>,
 }
 
 /// GitHub agent detailed configuration
@@ -191,6 +197,9 @@ pub struct GitHubAgentConfig {
     /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
+    /// Base documentation directory (optional, overrides global setting)
+    #[serde(default)]
+    pub base_docs_dir: Option<String>,
     /// Detailed settings for split mode (optional)
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub split_config: Option<GitHubSplitConfig>,
@@ -208,6 +217,9 @@ pub struct ClaudeAgentConfig {
     /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
+    /// Base documentation directory (optional, overrides global setting)
+    #[serde(default)]
+    pub base_docs_dir: Option<String>,
 }
 
 /// Codex agent detailed configuration
@@ -222,6 +234,9 @@ pub struct CodexAgentConfig {
     /// Whether to include filename headers in merged mode (optional, overrides global setting)
     #[serde(default)]
     pub include_filenames: Option<bool>,
+    /// Base documentation directory (optional, overrides global setting)
+    #[serde(default)]
+    pub base_docs_dir: Option<String>,
 }
 
 /// Default value: true
@@ -356,6 +371,44 @@ impl AIContextConfig {
             _ => self.include_filenames.unwrap_or(false),
         }
     }
+
+    /// Get effective base_docs_dir setting for specified agent
+    /// Priority: agent individual setting > global setting
+    pub fn get_effective_base_docs_dir(&self, agent: &str) -> &str {
+        match agent {
+            "cursor" => self
+                .agents
+                .cursor
+                .get_base_docs_dir()
+                .map(|s| s.as_str())
+                .unwrap_or(&self.base_docs_dir),
+            "cline" => self
+                .agents
+                .cline
+                .get_base_docs_dir()
+                .map(|s| s.as_str())
+                .unwrap_or(&self.base_docs_dir),
+            "github" => self
+                .agents
+                .github
+                .get_base_docs_dir()
+                .map(|s| s.as_str())
+                .unwrap_or(&self.base_docs_dir),
+            "claude" => self
+                .agents
+                .claude
+                .get_base_docs_dir()
+                .map(|s| s.as_str())
+                .unwrap_or(&self.base_docs_dir),
+            "codex" => self
+                .agents
+                .codex
+                .get_base_docs_dir()
+                .map(|s| s.as_str())
+                .unwrap_or(&self.base_docs_dir),
+            _ => &self.base_docs_dir,
+        }
+    }
 }
 
 /// Common trait for agent configurations
@@ -366,6 +419,8 @@ pub trait AgentConfigTrait {
     fn get_output_mode(&self) -> Option<OutputMode>;
     /// Get agent individual include_filenames setting
     fn get_include_filenames(&self) -> Option<bool>;
+    /// Get agent individual base_docs_dir setting
+    fn get_base_docs_dir(&self) -> Option<&String>;
 }
 
 impl AgentConfigTrait for CursorConfig {
@@ -387,6 +442,13 @@ impl AgentConfigTrait for CursorConfig {
         match self {
             Self::Simple(_) => None,
             Self::Advanced(config) => config.include_filenames,
+        }
+    }
+
+    fn get_base_docs_dir(&self) -> Option<&String> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.base_docs_dir.as_ref(),
         }
     }
 }
@@ -412,6 +474,13 @@ impl AgentConfigTrait for ClineConfig {
             Self::Advanced(config) => config.include_filenames,
         }
     }
+
+    fn get_base_docs_dir(&self) -> Option<&String> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.base_docs_dir.as_ref(),
+        }
+    }
 }
 
 impl AgentConfigTrait for GitHubConfig {
@@ -433,6 +502,13 @@ impl AgentConfigTrait for GitHubConfig {
         match self {
             Self::Simple(_) => None,
             Self::Advanced(config) => config.include_filenames,
+        }
+    }
+
+    fn get_base_docs_dir(&self) -> Option<&String> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.base_docs_dir.as_ref(),
         }
     }
 }
@@ -468,6 +544,13 @@ impl AgentConfigTrait for ClaudeConfig {
             Self::Advanced(config) => config.include_filenames,
         }
     }
+
+    fn get_base_docs_dir(&self) -> Option<&String> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.base_docs_dir.as_ref(),
+        }
+    }
 }
 
 impl AgentConfigTrait for CodexConfig {
@@ -489,6 +572,13 @@ impl AgentConfigTrait for CodexConfig {
         match self {
             Self::Simple(_) => None,
             Self::Advanced(config) => config.include_filenames,
+        }
+    }
+
+    fn get_base_docs_dir(&self) -> Option<&String> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.base_docs_dir.as_ref(),
         }
     }
 }
@@ -539,12 +629,14 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: None,
         });
         config.agents.cline = ClineConfig::Advanced(ClineAgentConfig {
             enabled: false,
             output_mode: Some(OutputMode::Merged),
             include_filenames: None,
+            base_docs_dir: None,
         });
 
         let enabled = config.enabled_agents();
@@ -589,6 +681,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Merged),
+            base_docs_dir: None,
             split_config: None,
         });
 
@@ -609,6 +702,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split), // Set but ignored
+            base_docs_dir: None,
         });
 
         // Claude is always merged
@@ -628,6 +722,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split), // Set but ignored
+            base_docs_dir: None,
         });
 
         // Codex is always merged
@@ -680,6 +775,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: None,
         });
 
@@ -810,5 +906,131 @@ agents:
             config.get_effective_output_mode("claude"),
             OutputMode::Merged
         ); // Always merged
+    }
+
+    #[test]
+    fn test_effective_base_docs_dir_global_fallback() {
+        let config = AIContextConfig {
+            base_docs_dir: "./global-docs".to_string(),
+            ..Default::default()
+        };
+
+        // No agent-specific base_docs_dir, use global setting
+        assert_eq!(
+            config.get_effective_base_docs_dir("cursor"),
+            "./global-docs"
+        );
+        assert_eq!(config.get_effective_base_docs_dir("cline"), "./global-docs");
+        assert_eq!(
+            config.get_effective_base_docs_dir("github"),
+            "./global-docs"
+        );
+        assert_eq!(
+            config.get_effective_base_docs_dir("claude"),
+            "./global-docs"
+        );
+        assert_eq!(config.get_effective_base_docs_dir("codex"), "./global-docs");
+        assert_eq!(
+            config.get_effective_base_docs_dir("unknown"),
+            "./global-docs"
+        );
+    }
+
+    #[test]
+    fn test_effective_base_docs_dir_agent_override() {
+        let mut config = AIContextConfig {
+            base_docs_dir: "./global-docs".to_string(),
+            ..Default::default()
+        };
+
+        // Set agent-specific base_docs_dir
+        config.agents.cursor = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: None,
+            include_filenames: None,
+            base_docs_dir: Some("./cursor-specific".to_string()),
+            split_config: None,
+        });
+
+        config.agents.cline = ClineConfig::Advanced(ClineAgentConfig {
+            enabled: true,
+            output_mode: None,
+            include_filenames: None,
+            base_docs_dir: Some("./cline-specific".to_string()),
+        });
+
+        // Agent-specific settings override global setting
+        assert_eq!(
+            config.get_effective_base_docs_dir("cursor"),
+            "./cursor-specific"
+        );
+        assert_eq!(
+            config.get_effective_base_docs_dir("cline"),
+            "./cline-specific"
+        );
+
+        // No agent-specific setting, use global
+        assert_eq!(
+            config.get_effective_base_docs_dir("github"),
+            "./global-docs"
+        );
+        assert_eq!(
+            config.get_effective_base_docs_dir("claude"),
+            "./global-docs"
+        );
+        assert_eq!(config.get_effective_base_docs_dir("codex"), "./global-docs");
+    }
+
+    #[test]
+    fn test_agent_specific_base_docs_dir_serialization() {
+        let config = CursorConfig::Advanced(CursorAgentConfig {
+            enabled: true,
+            output_mode: Some(OutputMode::Split),
+            include_filenames: None,
+            base_docs_dir: Some("./custom-docs".to_string()),
+            split_config: None,
+        });
+
+        let yaml = serde_yaml::to_string(&config).unwrap();
+        let deserialized: CursorConfig = serde_yaml::from_str(&yaml).unwrap();
+
+        assert!(deserialized.is_enabled());
+        assert_eq!(deserialized.get_output_mode(), Some(OutputMode::Split));
+        assert_eq!(
+            deserialized.get_base_docs_dir(),
+            Some(&"./custom-docs".to_string())
+        );
+    }
+
+    #[test]
+    fn test_config_with_agent_specific_base_docs_dir_parsing() {
+        let yaml = r#"
+version: "1.0"
+output_mode: split
+base_docs_dir: "./ai-context"
+agents:
+  cursor:
+    output_mode: split
+    base_docs_dir: "./cursor-context"
+  cline:
+    enabled: true
+    base_docs_dir: "./cline-context"
+  github: true
+  claude: true
+"#;
+
+        let config: AIContextConfig = serde_yaml::from_str(yaml).unwrap();
+
+        assert_eq!(config.base_docs_dir, "./ai-context");
+        assert_eq!(
+            config.get_effective_base_docs_dir("cursor"),
+            "./cursor-context"
+        );
+        assert_eq!(
+            config.get_effective_base_docs_dir("cline"),
+            "./cline-context"
+        );
+        assert_eq!(config.get_effective_base_docs_dir("github"), "./ai-context");
+        assert_eq!(config.get_effective_base_docs_dir("claude"), "./ai-context");
     }
 }

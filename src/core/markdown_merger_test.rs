@@ -16,6 +16,7 @@ mod include_filenames_tests {
                 enabled: true,
                 output_mode: Some(OutputMode::Merged),
                 include_filenames: Some(include_filenames),
+                base_docs_dir: None,
             })
         } else {
             ClaudeConfig::Simple(true)

@@ -76,6 +76,11 @@ aicm generate
 # 特定のエージェントのみ生成
 aicm generate --agent cursor
 
+# バージョン確認
+aicm --version
+# または
+aicm -V
+
 # 設定を検証
 aicm validate
 ```
@@ -87,6 +92,7 @@ aicm validate
 | `aicm init`     | -                                                | 現在のディレクトリに設定テンプレートを初期化 |
 | `aicm generate` | `--agent <name>`, `--config <path>`, `-c <path>` | AI エージェント用コンテキストファイルを生成  |
 | `aicm validate` | `--config <path>`, `-c <path>`                   | 設定ファイルの構文と設定を検証               |
+| `aicm --version` | `-V`, `--version`                                | バージョン情報を表示                        |
 
 #### オプション詳細
 
@@ -94,6 +100,7 @@ aicm validate
 | ----------------- | ------ | ------ | -------------------------------------------------------------------------- |
 | `--agent <name>`  | -      | string | 特定のエージェントのみファイル生成（cursor, cline, github, claude, codex） |
 | `--config <path>` | `-c`   | path   | aicm-config.yml の代わりに代替設定ファイルを使用                           |
+| `--version`       | `-V`   | -      | Cargo.toml から現在のバージョンを表示                                     |
 
 ## 📖 設定
 
@@ -131,6 +138,7 @@ agents:
     enabled: true
     output_mode: split
     include_filenames: true
+    base_docs_dir: ./cursor-docs  # エージェント固有のドキュメントディレクトリ
     split_config:
       rules:
         - file_patterns: ["*project*", "*overview*"]
@@ -146,6 +154,7 @@ agents:
   github:
     enabled: true
     output_mode: split
+    base_docs_dir: ./github-docs  # エージェント固有のドキュメントディレクトリ
     split_config:
       rules:
         - file_patterns: ["*backend*", "*api*"]
@@ -184,6 +193,7 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.<name>.enabled`                            | boolean            | -    | `true`           | エージェントの有効/無効                   |
 | `agents.<name>.output_mode`                        | string             | -    | `"split"`        | エージェント固有の出力モード              |
 | `agents.<name>.include_filenames`                  | boolean            | -    | `false`          | エージェント固有のファイル名ヘッダー      |
+| `agents.<name>.base_docs_dir`                      | string             | -    | -                | エージェント固有のドキュメントディレクトリ |
 | `agents.<name>.split_config.rules`                 | list               | -    | -                | ファイル分割ルール設定                    |
 | `agents.<name>.split_config.rules[].file_patterns` | list<string>       | ✓    | `["*project*"]`  | ファイルマッチングパターン（glob）        |
 | `agents.cursor.split_config.rules[].alwaysApply`   | boolean            | -    | `false`          | 常に適用するルール                        |
@@ -196,11 +206,17 @@ aicm generate --agent cursor --config custom.yaml
 
 ```
 your-project/
-├── ai-context/              # ドキュメントディレクトリ（base_docs_dir）
+├── ai-context/              # グローバルドキュメントディレクトリ（base_docs_dir）
 │   ├── 01-project-overview.md
 │   ├── 02-architecture.md
 │   ├── 03-development-rules.md
 │   └── 04-api-reference.md
+├── cursor-docs/             # エージェント固有ドキュメント（cursor.base_docs_dir）
+│   ├── cursor-specific.md
+│   └── cursor-rules.md
+├── github-docs/             # エージェント固有ドキュメント（github.base_docs_dir）
+│   ├── backend-guide.md
+│   └── frontend-guide.md
 ├── aicm-config.yml          # 設定ファイル
 ├── src/
 │   └── main.rs

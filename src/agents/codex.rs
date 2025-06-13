@@ -22,7 +22,8 @@ impl CodexAgent {
 
     /// Generate files for Codex (merged mode only)
     pub async fn generate(&self) -> Result<Vec<GeneratedFile>> {
-        let merger = MarkdownMerger::new(self.config.clone());
+        let base_docs_dir = self.config.get_effective_base_docs_dir("codex").to_string();
+        let merger = MarkdownMerger::new_with_base_dir(self.config.clone(), base_docs_dir);
         self.generate_merged(&merger).await
     }
 

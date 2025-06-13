@@ -35,7 +35,11 @@ impl CursorAgent {
 
     /// Generate files for Cursor
     pub async fn generate(&self) -> Result<Vec<GeneratedFile>> {
-        let merger = MarkdownMerger::new(self.config.clone());
+        let base_docs_dir = self
+            .config
+            .get_effective_base_docs_dir("cursor")
+            .to_string();
+        let merger = MarkdownMerger::new_with_base_dir(self.config.clone(), base_docs_dir);
 
         match self.config.get_effective_output_mode("cursor") {
             OutputMode::Merged => self.generate_merged(&merger).await,
@@ -560,6 +564,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
                     file_patterns: vec!["*manual*".to_string()],
@@ -599,6 +604,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
                     file_patterns: vec!["*always*".to_string()],
@@ -637,6 +643,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
                     file_patterns: vec!["*rust*".to_string()],
@@ -675,6 +682,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
                     file_patterns: vec!["*agent*".to_string()],
@@ -715,6 +723,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
                     file_patterns: vec!["*multi*".to_string()],
@@ -753,6 +762,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
                     file_patterns: vec!["matched.md".to_string()],
@@ -819,6 +829,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: Some(CursorSplitConfig {
                 rules: vec![CursorSplitRule {
                     file_patterns: vec!["*priority*".to_string()],
@@ -856,6 +867,7 @@ mod tests {
             enabled: true,
             include_filenames: None,
             output_mode: Some(OutputMode::Split),
+            base_docs_dir: None,
             split_config: Some(CursorSplitConfig {
                 rules: vec![
                     CursorSplitRule {

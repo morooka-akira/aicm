@@ -76,6 +76,11 @@ aicm generate
 # Generate for a specific agent only
 aicm generate --agent cursor
 
+# Check version
+aicm --version
+# or
+aicm -V
+
 # Validate your configuration
 aicm validate
 ```
@@ -87,6 +92,7 @@ aicm validate
 | `aicm init`     | -                                                | Initialize configuration template in current directory |
 | `aicm generate` | `--agent <name>`, `--config <path>`, `-c <path>` | Generate context files for AI agents                   |
 | `aicm validate` | `--config <path>`, `-c <path>`                   | Validate configuration file syntax and settings        |
+| `aicm --version` | `-V`, `--version`                                | Display version information                            |
 
 #### Option Details
 
@@ -94,6 +100,7 @@ aicm validate
 | ----------------- | ----- | ------ | ----------------------------------------------------------------------------- |
 | `--agent <name>`  | -     | string | Generate files for specific agent only (cursor, cline, github, claude, codex) |
 | `--config <path>` | `-c`  | path   | Use alternative configuration file instead of aicm-config.yml                 |
+| `--version`       | `-V`  | -      | Display current version from Cargo.toml                                      |
 
 ## 📖 Configuration
 
@@ -131,6 +138,7 @@ agents:
     enabled: true
     output_mode: split
     include_filenames: true
+    base_docs_dir: ./cursor-docs  # Agent-specific documentation directory
     split_config:
       rules:
         - file_patterns: ["*project*", "*overview*"]
@@ -146,6 +154,7 @@ agents:
   github:
     enabled: true
     output_mode: split
+    base_docs_dir: ./github-docs  # Agent-specific documentation directory
     split_config:
       rules:
         - file_patterns: ["*backend*", "*api*"]
@@ -184,6 +193,7 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.<name>.enabled`                            | boolean            | -        | `true`           | Enable/disable agent                     |
 | `agents.<name>.output_mode`                        | string             | -        | `"split"`        | Agent-specific output mode               |
 | `agents.<name>.include_filenames`                  | boolean            | -        | `false`          | Agent-specific filename headers          |
+| `agents.<name>.base_docs_dir`                      | string             | -        | -                | Agent-specific documentation directory   |
 | `agents.<name>.split_config.rules`                 | list               | -        | -                | File splitting rules configuration       |
 | `agents.<name>.split_config.rules[].file_patterns` | list<string>       | ✓        | `["*project*"]`  | File matching patterns (glob)            |
 | `agents.cursor.split_config.rules[].alwaysApply`   | boolean            | -        | `false`          | Always apply rule                        |
@@ -196,11 +206,17 @@ aicm generate --agent cursor --config custom.yaml
 
 ```
 your-project/
-├── ai-context/              # Documentation directory (base_docs_dir)
+├── ai-context/              # Global documentation directory (base_docs_dir)
 │   ├── 01-project-overview.md
 │   ├── 02-architecture.md
 │   ├── 03-development-rules.md
 │   └── 04-api-reference.md
+├── cursor-docs/             # Agent-specific documentation (cursor.base_docs_dir)
+│   ├── cursor-specific.md
+│   └── cursor-rules.md
+├── github-docs/             # Agent-specific documentation (github.base_docs_dir)
+│   ├── backend-guide.md
+│   └── frontend-guide.md
 ├── aicm-config.yml          # Configuration file
 ├── src/
 │   └── main.rs
