@@ -5,11 +5,13 @@
  */
 
 pub mod agents;
+pub mod cleanup;
 pub mod config;
 pub mod core;
 pub mod types;
 
 pub use agents::*;
+pub use cleanup::*;
 pub use config::*;
 pub use core::*;
 pub use types::*;
