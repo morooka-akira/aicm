@@ -21,4 +21,4 @@ agents:
   cline:
     output_mode: split
   claude: true
-  codex: false
+  codex: true
