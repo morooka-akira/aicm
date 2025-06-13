@@ -9,7 +9,6 @@ use aicm::agents::cline::ClineAgent;
 use aicm::agents::codex::CodexAgent;
 use aicm::agents::cursor::CursorAgent;
 use aicm::agents::github::GitHubAgent;
-use aicm::cleanup::AgentCleaner;
 use aicm::config::{error::ConfigError, loader::ConfigLoader};
 use aicm::types::{AIContextConfig, GeneratedFile};
 use aicm::DEFAULT_CONFIG_FILE;
@@ -104,21 +103,6 @@ async fn handle_generate(agent_filter: Option<String>, config_path: Option<Strin
             "❌ Documentation directory does not exist: {}\n💡 Please create the directory or change base_docs_dir in the configuration file to the correct path",
             config.base_docs_dir
         ));
-    }
-
-    // Clean up files for disabled agents first
-    match AgentCleaner::cleanup_disabled_agents(&config, None) {
-        Ok(cleaned_files) => {
-            if !cleaned_files.is_empty() {
-                println!("🧹 Cleaned up files for disabled agents:");
-                for file in cleaned_files {
-                    println!("  🗑️  {}", file);
-                }
-            }
-        }
-        Err(e) => {
-            println!("⚠️  Warning: Failed to clean up some files: {}", e);
-        }
     }
 
     // Get enabled agents
