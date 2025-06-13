@@ -23,7 +23,7 @@ use tokio::fs;
 #[command(
     about = "AI Context Management Tool - Unified context file management for multiple AI coding agents"
 )]
-#[command(version)]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
