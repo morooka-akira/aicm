@@ -12,17 +12,37 @@ use tokio::fs;
 /// Class for automatic Markdown file detection and merging
 pub struct MarkdownMerger {
     config: AIContextConfig,
+    base_docs_dir: Option<String>,
 }
 
 impl MarkdownMerger {
     /// Create a new Markdown merger
     pub fn new(config: AIContextConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            base_docs_dir: None,
+        }
+    }
+
+    /// Create a new Markdown merger with specific base directory
+    pub fn new_with_base_dir(config: AIContextConfig, base_docs_dir: String) -> Self {
+        Self {
+            config,
+            base_docs_dir: Some(base_docs_dir),
+        }
+    }
+
+    /// Get effective base docs directory
+    fn get_effective_base_docs_dir(&self) -> &str {
+        self.base_docs_dir
+            .as_deref()
+            .unwrap_or(&self.config.base_docs_dir)
     }
 
     /// Merge all Markdown files under docs (includes filename headers for backward compatibility)
     pub async fn merge_all(&self) -> Result<String> {
-        let docs_dir = Path::new(&self.config.base_docs_dir);
+        let base_dir = self.get_effective_base_docs_dir();
+        let docs_dir = Path::new(base_dir);
 
         // Return empty string if directory doesn't exist
         if !docs_dir.exists() {
@@ -36,8 +56,9 @@ impl MarkdownMerger {
         for file_path in markdown_files {
             if let Ok(content) = fs::read_to_string(&file_path).await {
                 // Add filename as header
+                let base_dir = self.get_effective_base_docs_dir();
                 let relative_path = file_path
-                    .strip_prefix(&self.config.base_docs_dir)
+                    .strip_prefix(base_dir)
                     .unwrap_or(&file_path)
                     .to_string_lossy()
                     .replace('\\', "/"); // Normalize path separators for cross-platform compatibility
@@ -51,7 +72,8 @@ impl MarkdownMerger {
 
     /// Merge all Markdown files under docs (agent name specified version)
     pub async fn merge_all_with_options(&self, agent: Option<&str>) -> Result<String> {
-        let docs_dir = Path::new(&self.config.base_docs_dir);
+        let base_dir = self.get_effective_base_docs_dir();
+        let docs_dir = Path::new(base_dir);
 
         // Return empty string if directory doesn't exist
         if !docs_dir.exists() {
@@ -95,7 +117,8 @@ impl MarkdownMerger {
 
     /// For split: get individual file contents
     pub async fn get_individual_files(&self) -> Result<Vec<(String, String)>> {
-        let docs_dir = Path::new(&self.config.base_docs_dir);
+        let base_dir = self.get_effective_base_docs_dir();
+        let docs_dir = Path::new(base_dir);
 
         if !docs_dir.exists() {
             return Ok(Vec::new());
@@ -106,8 +129,9 @@ impl MarkdownMerger {
 
         for file_path in markdown_files {
             if let Ok(content) = fs::read_to_string(&file_path).await {
+                let base_dir = self.get_effective_base_docs_dir();
                 let relative_path = file_path
-                    .strip_prefix(&self.config.base_docs_dir)
+                    .strip_prefix(base_dir)
                     .unwrap_or(&file_path)
                     .to_string_lossy()
                     .replace('\\', "/"); // Normalize path separators for cross-platform compatibility
