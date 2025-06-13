@@ -34,6 +34,13 @@ A unified CLI tool built in Rust to automatically generate context files for mul
 
 ## 🚀 Installation
 
+### Using Homebrew (macOS/Linux)
+
+```bash
+brew tap morooka-akira/aicm
+brew install aicm
+```
+
 ### Using Cargo (Recommended)
 
 ```bash

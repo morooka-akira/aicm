@@ -34,6 +34,13 @@
 
 ## 🚀 インストール
 
+### Homebrew を使う（macOS/Linux）
+
+```bash
+brew tap morooka-akira/aicm
+brew install aicm
+```
+
 ### Cargo を使用（推奨）
 
 ```bash
