@@ -34,11 +34,87 @@ impl ConfigLoader {
         Ok(config)
     }
 
-    /// Create and save default configuration
+    /// Create and save default configuration with comments
     pub async fn create_default<P: AsRef<Path>>(path: P) -> Result<AIContextConfig, ConfigError> {
-        let config = AIContextConfig::default();
-        Self::save(path, &config).await?;
-        Ok(config)
+        let template = Self::create_default_template();
+
+        fs::write(path, template)
+            .await
+            .map_err(|e| ConfigError::IoError { source: e })?;
+
+        // Return the default config object
+        Ok(AIContextConfig::default())
+    }
+
+    /// Create default configuration template with detailed comments
+    fn create_default_template() -> String {
+        let template = [
+            "# aicm Configuration File",
+            "# AI Context Management Tool - Configuration for multiple AI coding agents",
+            "# For more information: https://github.com/morooka-akira/aicm",
+            "",
+            "# Global output mode for all agents (default: merged)",
+            "# - merged: Combine all markdown files into one file per agent",
+            "# - split: Create separate files for each markdown file",
+            "output_mode: merged",
+            "",
+            "# Global base documentation directory (default: ./ai-docs)",
+            "# This directory should contain your markdown documentation files",
+            "base_docs_dir: ./ai-docs",
+            "",
+            "# Agent configurations",
+            "agents:",
+            "  # Cursor IDE Agent - Generates .cursor/rules/*.mdc files",
+            "  cursor:",
+            "    enabled: true",
+            "    output_mode: split  # Override global setting for Cursor",
+            "    split_config:",
+            "      rules:",
+            "        # Always Apply Rule - Always loaded in Cursor",
+            "        - file_patterns: [\"*overview*\", \"*common*\"]",
+            "          alwaysApply: true",
+            "        ",
+            "        # Auto Attached Rule - Automatically attached when editing matching files",
+            "        - file_patterns: [\"*rust*\", \"*backend*\"]",
+            "          globs: [\"**/*.rs\", \"**/*.toml\"]",
+            "        ",
+            "        # Agent Requested Rule - Loaded when agent explicitly requests",
+            "        - file_patterns: [\"*api*\", \"*architecture*\"]",
+            "          description: \"API design and system architecture guidelines\"",
+            "        ",
+            "        # Manual Rule - Only loaded when manually referenced",
+            "        - file_patterns: [\"*troubleshoot*\", \"*debug*\"]",
+            "          manual: true",
+            "",
+            "  # GitHub Copilot Agent - Generates .github/instructions/*.instructions.md files",
+            "  github:",
+            "    enabled: true",
+            "    output_mode: split",
+            "    split_config:",
+            "      rules:",
+            "        # Backend development rules - Applied to Rust files",
+            "        - file_patterns: [\"*rust*\", \"*backend*\", \"*api*\"]",
+            "          apply_to: [\"**/*.rs\", \"**/*.toml\"]",
+            "        ",
+            "        # Frontend development rules - Applied to TypeScript files",
+            "        - file_patterns: [\"*frontend*\", \"*ui*\", \"*component*\"]",
+            "          apply_to: [\"**/*.ts\", \"**/*.tsx\", \"**/*.js\", \"**/*.jsx\"]",
+            "",
+            "  # Cline Agent - Generates .clinerules/*.md files",
+            "  cline:",
+            "    enabled: true",
+            "    output_mode: merged  # Cline works well with merged content",
+            "",
+            "  # Claude Code Agent - Generates CLAUDE.md file",
+            "  claude:",
+            "    enabled: true",
+            "",
+            "  # OpenAI Codex Agent - Generates AGENTS.md file",
+            "  codex:",
+            "    enabled: true",
+        ];
+
+        template.join("\n")
     }
 
     /// Save configuration file
