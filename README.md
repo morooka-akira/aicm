@@ -22,6 +22,8 @@ A unified CLI tool built in Rust to automatically generate context files for mul
 
 **aicm** streamlines AI-assisted development by centralizing context management for popular AI coding tools. Instead of maintaining separate configuration files for each tool, define your project context once and let aicm generate the appropriate formats for all your AI assistants.
 
+The tool reads markdown files from `base_docs_dir` and automatically converts and deploys them into each agent's rule file format, enabling unified document management across all AI coding tools.
+
 ### 🎯 Supported Tools
 
 | Tool                  | Output Files                             | Features                         |
