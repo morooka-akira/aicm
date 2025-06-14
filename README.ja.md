@@ -24,6 +24,53 @@
 
 `base_docs_dir`に配置したマークダウンファイルを読み込み、各エージェントのルールファイル形式に自動変換・展開することで、統一されたドキュメント管理を実現します。
 
+### 🔄 動作原理
+
+```mermaid
+flowchart LR
+    subgraph "📁 Input"
+        CONFIG[📄 aicm-config.yml]
+        
+        subgraph "📂 ./ai-docs/"
+            DOC1[project.md]
+            DOC2[architecture.md]
+            DOC3[guidelines.md]
+        end
+    end
+    
+    PROCESS[🚀 aicm generate]
+    
+    subgraph "📤 Generated Files"
+        OUT1[.cursor/rules/*.mdc]
+        OUT2[.clinerules/*.md]
+        OUT3[.github/instructions/*.md]
+        OUT4[CLAUDE.md]
+        OUT5[AGENTS.md]
+    end
+    
+    CONFIG --> PROCESS
+    DOC1 --> PROCESS
+    DOC2 --> PROCESS
+    DOC3 --> PROCESS
+    
+    PROCESS --> OUT1
+    PROCESS --> OUT2
+    PROCESS --> OUT3
+    PROCESS --> OUT4
+    PROCESS --> OUT5
+    
+    style CONFIG fill:#e3f2fd
+    style DOC1 fill:#e8f5e8
+    style DOC2 fill:#e8f5e8
+    style DOC3 fill:#e8f5e8
+    style PROCESS fill:#fff3e0
+    style OUT1 fill:#f1f8e9
+    style OUT2 fill:#f1f8e9
+    style OUT3 fill:#f1f8e9
+    style OUT4 fill:#f1f8e9
+    style OUT5 fill:#f1f8e9
+```
+
 ### 🎯 サポート対象ツール
 
 | ツール                | 出力ファイル                             | 機能                               |
