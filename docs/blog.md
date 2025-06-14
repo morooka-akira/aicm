@@ -30,7 +30,7 @@
 
 ### 基本的な使い方
 
-aicm を使うと、一つの設定ファイル（`aicm-config.yml`）から複数の AI エージェント用設定ファイルを自動生成できます。
+aicm を使うと、一つの設定ファイル（`aicm-config.yml`）から複数の AI エージェント用ルールファイルを自動生成できます。
 
 ```bash
 # プロジェクトの初期化
@@ -61,6 +61,57 @@ agents:
   claude: true
   codex: false
 ```
+
+### 動作の仕組み
+
+aicm の動作は非常にシンプルです。設定ファイルとマークダウンファイルを読み込み、各エージェント用の形式に変換します：
+
+```mermaid
+flowchart LR
+    subgraph "📁 Input"
+        CONFIG[📄 aicm-config.yml]
+        
+        subgraph "📂 ./ai-context/"
+            DOC1[project.md]
+            DOC2[architecture.md]
+            DOC3[guidelines.md]
+        end
+    end
+    
+    PROCESS[🚀 aicm generate]
+    
+    subgraph "📤 Generated Files"
+        OUT1[.cursor/rules/*.mdc]
+        OUT2[.clinerules/*.md]
+        OUT3[.github/instructions/*.md]
+        OUT4[CLAUDE.md]
+        OUT5[AGENTS.md]
+    end
+    
+    CONFIG --> PROCESS
+    DOC1 --> PROCESS
+    DOC2 --> PROCESS
+    DOC3 --> PROCESS
+    
+    PROCESS --> OUT1
+    PROCESS --> OUT2
+    PROCESS --> OUT3
+    PROCESS --> OUT4
+    PROCESS --> OUT5
+    
+    style CONFIG fill:#e3f2fd
+    style DOC1 fill:#e8f5e8
+    style DOC2 fill:#e8f5e8
+    style DOC3 fill:#e8f5e8
+    style PROCESS fill:#fff3e0
+    style OUT1 fill:#f1f8e9
+    style OUT2 fill:#f1f8e9
+    style OUT3 fill:#f1f8e9
+    style OUT4 fill:#f1f8e9
+    style OUT5 fill:#f1f8e9
+```
+
+このように、一度マークダウンファイルを作成すれば、各エージェント用のルールファイルが自動生成されるため、手作業でのコピーが不要になります。
 
 ### Cursor の mdc ファイル用設定
 
@@ -181,6 +232,6 @@ https://github.com/morooka-akira/aicm
 
 ---
 
-Timelabでは、AIも積極的に活用し、Lynxをはじめとする「より有意義な時間をデザインする」エンジニアリングを行っています。
+Timelabでは、AIも積極的に活用し、Lynxをはじめとする「より有意義な時間をデザインする」開発を行っています。
 
 もし、この記事に興味を持たれた方や弊社に興味がある方は、ぜひ私のXアカウント（[@hakoten](https://twitter.com/hakotensan)）やコメントで気軽にお声がけください。Timelabエンジニアチームで一緒に働けることを楽しみにしています。
