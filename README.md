@@ -326,14 +326,14 @@ Base documentation content here...
 @/absolute/path/to/config.md
 ```
 
-#### ✨ Feature: Automatic Duplicate Exclusion
+#### ✨ @path/to/import syntax
 
-**aicm provides automatic content duplication prevention** for Claude Code. When a file specified in `import_files` also exists in `base_docs_dir`, the `base_docs_dir` version is automatically excluded from the output. Only the `import_files` version (using @filepath notation) will be included.
+**You can embed base_docs_dir (or external files) using @path/to/import syntax**. Files specified in `import_files` are output as Claude Code's @filepath notation, with automatic duplicate exclusion when files overlap with base_docs_dir.
 
 **Example scenario:**
 - `base_docs_dir`: `./docs/` contains `api-reference.md`
 - `import_files`: includes `./docs/api-reference.md`
-- **Result**: Only `@./docs/api-reference.md` appears in CLAUDE.md (no duplicate content)
+- **Result**: `@./docs/api-reference.md` appears in CLAUDE.md (no duplication)
 
 ### Other Agents
 

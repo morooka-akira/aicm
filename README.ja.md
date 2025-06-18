@@ -326,14 +326,14 @@ import_files付きの出力例：
 @/absolute/path/to/config.md
 ```
 
-#### ✨ 特徴: 自動重複排除機能
+#### ✨ @path/to/import構文
 
-**aicm は Claude Code 向けに自動的なコンテンツ重複排除機能を提供します**。`import_files` に指定されたファイルが `base_docs_dir` にも存在する場合、`base_docs_dir` 版は自動的に除外され、`import_files` 版（@filepath記法）のみが出力されます。
+**base_docs_dir（または外部ファイル）を @path/to/import構文 で埋め込むことができます**。`import_files` に指定されたファイルは Claude Code の @filepath記法として出力され、base_docs_dir と重複するファイルは自動的に重複排除されます。
 
 **使用例:**
 - `base_docs_dir`: `./docs/` に `api-reference.md` が存在
 - `import_files`: `./docs/api-reference.md` を指定
-- **結果**: CLAUDE.md には `@./docs/api-reference.md` のみが出力される（コンテンツ重複なし）
+- **結果**: CLAUDE.md には `@./docs/api-reference.md` として出力される（重複なし）
 
 ### その他のエージェント
 
