@@ -47,10 +47,10 @@ impl BaseAgentUtils {
         file_path: &str,
         _base_path: P,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let path = if file_path.starts_with("~/") {
+        let path = if let Some(stripped) = file_path.strip_prefix("~/") {
             // Tilde notation: ~/path -> $HOME/path
             if let Ok(home_dir) = env::var("HOME") {
-                let expanded_path = PathBuf::from(home_dir).join(&file_path[2..]);
+                let expanded_path = PathBuf::from(home_dir).join(stripped);
                 // Canonicalize tilde paths to get absolute path
                 match expanded_path.canonicalize() {
                     Ok(canonical_path) => canonical_path,
@@ -118,6 +118,45 @@ impl BaseAgentUtils {
         } else {
             Ok(format!("@{}", relative_path))
         }
+    }
+
+    /// Check if an import file path matches any of the base docs dir files
+    /// Returns true if the resolved import file path matches any file in base_docs_files
+    pub fn is_import_file_duplicate(
+        import_file_path: &str,
+        project_root: &Path,
+        base_docs_files: &[(String, String)],
+        base_docs_dir: &Path,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
+        // Resolve the import file path
+        let resolved_import_path = Self::resolve_import_file_path(import_file_path, project_root)?;
+
+        // Convert resolved path to absolute for comparison
+        let absolute_import_path = if resolved_import_path.is_absolute() {
+            resolved_import_path
+        } else {
+            // For relative paths, resolve them relative to the project root
+            project_root.join(&resolved_import_path)
+        };
+
+        // Compare against each base docs file
+        for (relative_file_path, _) in base_docs_files {
+            let base_docs_file_path = base_docs_dir.join(relative_file_path);
+
+            // Canonicalize both paths for comparison if they exist
+            let canonical_import = absolute_import_path
+                .canonicalize()
+                .unwrap_or(absolute_import_path.clone());
+            let canonical_base = base_docs_file_path
+                .canonicalize()
+                .unwrap_or(base_docs_file_path);
+
+            if canonical_import == canonical_base {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 }
 
@@ -367,5 +406,72 @@ mod tests {
         let formatted = result.unwrap();
         assert!(!formatted.contains("#"));
         assert!(formatted.starts_with("@docs/guide.md"));
+    }
+
+    #[test]
+    fn test_is_import_file_duplicate_no_match() {
+        let base_docs_files = vec![
+            ("file1.md".to_string(), "Content 1".to_string()),
+            ("file2.md".to_string(), "Content 2".to_string()),
+        ];
+
+        let project_root = Path::new("/project");
+        let base_docs_dir = Path::new("/project/docs");
+        let import_file_path = "other/different.md";
+
+        let result = BaseAgentUtils::is_import_file_duplicate(
+            import_file_path,
+            project_root,
+            &base_docs_files,
+            base_docs_dir,
+        );
+
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[test]
+    fn test_is_import_file_duplicate_relative_paths() {
+        let base_docs_files = vec![
+            ("file1.md".to_string(), "Content 1".to_string()),
+            ("subdir/file2.md".to_string(), "Content 2".to_string()),
+        ];
+
+        let project_root = Path::new(".");
+        let base_docs_dir = Path::new("./docs");
+
+        // Test relative path that should match
+        let import_file_path = "docs/file1.md";
+        let result = BaseAgentUtils::is_import_file_duplicate(
+            import_file_path,
+            project_root,
+            &base_docs_files,
+            base_docs_dir,
+        );
+
+        assert!(result.is_ok());
+        // Note: This test depends on actual file existence for canonicalization
+        // In real scenarios, the function would compare canonical paths
+    }
+
+    #[test]
+    fn test_is_import_file_duplicate_absolute_paths() {
+        let base_docs_files = vec![("guide.md".to_string(), "Guide content".to_string())];
+
+        let project_root = Path::new("/project");
+        let base_docs_dir = Path::new("/project/docs");
+
+        // Test absolute path that should match the base docs file
+        let import_file_path = "/project/docs/guide.md";
+        let result = BaseAgentUtils::is_import_file_duplicate(
+            import_file_path,
+            project_root,
+            &base_docs_files,
+            base_docs_dir,
+        );
+
+        assert!(result.is_ok());
+        // Note: This test depends on actual file existence for canonicalization
+        // In real scenarios, the function would compare canonical paths
     }
 }

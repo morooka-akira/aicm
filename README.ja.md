@@ -212,6 +212,8 @@ agents:
           apply_to: ["**/*.ts", "**/*.tsx"]
 
   # Claude Code with import files (@filepath記法を使用)
+  # import_filesを設定すると、指定したファイルを@filepath記法として埋め込むことができます
+  # base_docs_dirと重複するファイルは自動的に除外され、import_files版のみが出力されます
   claude:
     enabled: true
     import_files:
@@ -323,6 +325,15 @@ import_files付きの出力例：
 
 @/absolute/path/to/config.md
 ```
+
+#### ✨ 特徴: 自動重複排除機能
+
+**aicm は Claude Code 向けに自動的なコンテンツ重複排除機能を提供します**。`import_files` に指定されたファイルが `base_docs_dir` にも存在する場合、`base_docs_dir` 版は自動的に除外され、`import_files` 版（@filepath記法）のみが出力されます。
+
+**使用例:**
+- `base_docs_dir`: `./docs/` に `api-reference.md` が存在
+- `import_files`: `./docs/api-reference.md` を指定
+- **結果**: CLAUDE.md には `@./docs/api-reference.md` のみが出力される（コンテンツ重複なし）
 
 ### その他のエージェント
 

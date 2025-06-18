@@ -212,6 +212,8 @@ agents:
           apply_to: ["**/*.ts", "**/*.tsx"]
 
   # Claude Code with import files (uses @filepath notation)
+  # Setting import_files allows you to embed specified files using @filepath notation
+  # Files that overlap with base_docs_dir are automatically excluded, with only the import_files version being output
   claude:
     enabled: true
     import_files:
@@ -323,6 +325,15 @@ Base documentation content here...
 
 @/absolute/path/to/config.md
 ```
+
+#### ✨ Feature: Automatic Duplicate Exclusion
+
+**aicm provides automatic content duplication prevention** for Claude Code. When a file specified in `import_files` also exists in `base_docs_dir`, the `base_docs_dir` version is automatically excluded from the output. Only the `import_files` version (using @filepath notation) will be included.
+
+**Example scenario:**
+- `base_docs_dir`: `./docs/` contains `api-reference.md`
+- `import_files`: includes `./docs/api-reference.md`
+- **Result**: Only `@./docs/api-reference.md` appears in CLAUDE.md (no duplicate content)
 
 ### Other Agents
 
