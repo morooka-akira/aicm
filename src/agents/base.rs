@@ -4,7 +4,9 @@
  * Simplified base agent common functions
  */
 
-use std::path::Path;
+use crate::types::config::ImportFile;
+use std::env;
+use std::path::{Path, PathBuf};
 
 /// Base agent common functions (simplified version)
 pub struct BaseAgentUtils;
@@ -37,6 +39,75 @@ impl BaseAgentUtils {
         filename
             .replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_")
             .replace(' ', "_")
+    }
+
+    /// Resolve file path from various notations (absolute, relative, tilde) for Claude import files
+    /// Returns canonical path string
+    pub fn resolve_import_file_path<P: AsRef<Path>>(
+        file_path: &str,
+        base_path: P,
+    ) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let path = if file_path.starts_with("~/") {
+            // Tilde notation: ~/path -> $HOME/path
+            if let Ok(home_dir) = env::var("HOME") {
+                PathBuf::from(home_dir).join(&file_path[2..])
+            } else {
+                return Err("HOME environment variable not found".into());
+            }
+        } else if Path::new(file_path).is_absolute() {
+            // Absolute path
+            PathBuf::from(file_path)
+        } else {
+            // Relative path: resolve from base_path (project root)
+            base_path.as_ref().join(file_path)
+        };
+
+        // Canonicalize path and handle errors
+        match path.canonicalize() {
+            Ok(canonical_path) => Ok(canonical_path),
+            Err(_) => {
+                // If canonicalize fails (file doesn't exist), return the constructed path
+                Ok(path)
+            }
+        }
+    }
+
+    /// Calculate relative path from CLAUDE.md to target file
+    /// Returns relative path string suitable for @filepath notation
+    pub fn calculate_claude_relative_path<P1: AsRef<Path>, P2: AsRef<Path>>(
+        from_file: P1,
+        to_file: P2,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let from_dir = from_file
+            .as_ref()
+            .parent()
+            .ok_or("Cannot get parent directory of CLAUDE.md")?;
+
+        let relative_path =
+            pathdiff::diff_paths(&to_file, from_dir).ok_or("Cannot calculate relative path")?;
+
+        Ok(Self::normalize_path(relative_path))
+    }
+
+    /// Format import file for Claude output
+    /// Returns formatted string with note and @filepath notation
+    pub fn format_import_file(
+        import_file: &ImportFile,
+        claude_file_path: &Path,
+        project_root: &Path,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        // Resolve the file path
+        let resolved_path = Self::resolve_import_file_path(&import_file.path, project_root)?;
+
+        // Calculate relative path from CLAUDE.md to target file
+        let relative_path = Self::calculate_claude_relative_path(claude_file_path, &resolved_path)?;
+
+        // Format output
+        if let Some(note) = &import_file.note {
+            Ok(format!("# {}\n@{}", note, relative_path))
+        } else {
+            Ok(format!("@{}", relative_path))
+        }
     }
 }
 
@@ -169,5 +240,107 @@ mod tests {
         let multiple_backslashes = "path\\\\to\\\\file";
         let result = BaseAgentUtils::normalize_path(multiple_backslashes);
         assert_eq!(result, "path//to//file");
+    }
+
+    #[test]
+    fn test_resolve_import_file_path_absolute() {
+        let base_path = Path::new("/project");
+        let absolute_path = "/absolute/path/file.txt";
+
+        let result = BaseAgentUtils::resolve_import_file_path(absolute_path, base_path);
+        assert!(result.is_ok());
+
+        let resolved = result.unwrap();
+        assert_eq!(resolved, PathBuf::from("/absolute/path/file.txt"));
+    }
+
+    #[test]
+    fn test_resolve_import_file_path_relative() {
+        let base_path = Path::new("/project");
+        let relative_path = "docs/guide.md";
+
+        let result = BaseAgentUtils::resolve_import_file_path(relative_path, base_path);
+        assert!(result.is_ok());
+
+        let resolved = result.unwrap();
+        assert_eq!(resolved, PathBuf::from("/project/docs/guide.md"));
+    }
+
+    #[test]
+    fn test_resolve_import_file_path_tilde() {
+        // Set HOME environment variable for testing
+        env::set_var("HOME", "/home/testuser");
+
+        let base_path = Path::new("/project");
+        let tilde_path = "~/documents/file.txt";
+
+        let result = BaseAgentUtils::resolve_import_file_path(tilde_path, base_path);
+        assert!(result.is_ok());
+
+        let resolved = result.unwrap();
+        assert_eq!(resolved, PathBuf::from("/home/testuser/documents/file.txt"));
+
+        // Clean up
+        env::remove_var("HOME");
+    }
+
+    #[test]
+    fn test_calculate_claude_relative_path() {
+        let claude_file = Path::new("/project/CLAUDE.md");
+        let target_file = Path::new("/project/docs/guide.md");
+
+        let result = BaseAgentUtils::calculate_claude_relative_path(claude_file, target_file);
+        assert!(result.is_ok());
+
+        let relative = result.unwrap();
+        assert_eq!(relative, "docs/guide.md");
+    }
+
+    #[test]
+    fn test_calculate_claude_relative_path_parent_directory() {
+        let claude_file = Path::new("/project/CLAUDE.md");
+        let target_file = Path::new("/home/user/config.md");
+
+        let result = BaseAgentUtils::calculate_claude_relative_path(claude_file, target_file);
+        assert!(result.is_ok());
+
+        let relative = result.unwrap();
+        assert!(relative.contains("../"));
+    }
+
+    #[test]
+    fn test_format_import_file_with_note() {
+        let import_file = ImportFile {
+            path: "docs/guide.md".to_string(),
+            note: Some("Project guide".to_string()),
+        };
+
+        let claude_file = Path::new("/project/CLAUDE.md");
+        let project_root = Path::new("/project");
+
+        let result = BaseAgentUtils::format_import_file(&import_file, claude_file, project_root);
+        assert!(result.is_ok());
+
+        let formatted = result.unwrap();
+        assert!(formatted.contains("# Project guide"));
+        assert!(formatted.contains("@docs/guide.md"));
+    }
+
+    #[test]
+    fn test_format_import_file_without_note() {
+        let import_file = ImportFile {
+            path: "docs/guide.md".to_string(),
+            note: None,
+        };
+
+        let claude_file = Path::new("/project/CLAUDE.md");
+        let project_root = Path::new("/project");
+
+        let result = BaseAgentUtils::format_import_file(&import_file, claude_file, project_root);
+        assert!(result.is_ok());
+
+        let formatted = result.unwrap();
+        assert!(!formatted.contains("#"));
+        assert!(formatted.starts_with("@docs/guide.md"));
     }
 }

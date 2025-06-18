@@ -5,9 +5,12 @@
  * Outputs CLAUDE.md for Claude Code (supports merged mode only)
  */
 
+use crate::agents::base::BaseAgentUtils;
 use crate::core::MarkdownMerger;
+use crate::types::config::ClaudeConfig;
 use crate::types::{AIContextConfig, GeneratedFile};
 use anyhow::Result;
+use std::path::Path;
 
 /// Claude agent (simplified version)
 pub struct ClaudeAgent {
@@ -32,8 +35,41 @@ impl ClaudeAgent {
 
     /// Merged mode: merge into one file and output as CLAUDE.md
     async fn generate_merged(&self, merger: &MarkdownMerger) -> Result<Vec<GeneratedFile>> {
-        let content = merger.merge_all_with_options(Some("claude")).await?;
+        let mut content = merger.merge_all_with_options(Some("claude")).await?;
         let output_path = self.get_output_path();
+
+        // Add import files if configured
+        if let ClaudeConfig::Advanced(claude_config) = &self.config.agents.claude {
+            if !claude_config.import_files.is_empty() {
+                let project_root = Path::new(".");
+                let claude_file_path = Path::new(&output_path);
+
+                // Add separator if content already exists
+                if !content.trim().is_empty() {
+                    content.push_str("\n\n");
+                }
+
+                // Add import files section
+                for import_file in &claude_config.import_files {
+                    match BaseAgentUtils::format_import_file(
+                        import_file,
+                        claude_file_path,
+                        project_root,
+                    ) {
+                        Ok(formatted) => {
+                            content.push_str(&formatted);
+                            content.push('\n');
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Warning: Failed to process import file '{}': {}",
+                                import_file.path, e
+                            );
+                        }
+                    }
+                }
+            }
+        }
 
         Ok(vec![GeneratedFile::new(output_path, content)])
     }
@@ -47,6 +83,7 @@ impl ClaudeAgent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::config::{ClaudeAgentConfig, ClaudeConfig, ImportFile};
     use crate::types::{AgentConfig, OutputMode};
     use tempfile::tempdir;
     use tokio::fs;
@@ -210,5 +247,95 @@ mod tests {
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].path, "CLAUDE.md");
         assert!(files[0].content.contains("Test content"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_with_import_files() {
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // Create test markdown file
+        fs::write(docs_path.join("test.md"), "# Test Content\nThis is a test.")
+            .await
+            .unwrap();
+
+        // Create import files for testing
+        let import_file_path = docs_path.join("import_test.md");
+        fs::write(&import_file_path, "Import file content")
+            .await
+            .unwrap();
+
+        // Create config with import files
+        let mut config = create_test_config(&docs_path.to_string_lossy());
+        config.agents.claude = ClaudeConfig::Advanced(ClaudeAgentConfig {
+            enabled: true,
+            output_mode: None,
+            include_filenames: Some(true),
+            base_docs_dir: None,
+            import_files: vec![
+                ImportFile {
+                    path: import_file_path.to_string_lossy().to_string(),
+                    note: Some("Test import file".to_string()),
+                },
+                ImportFile {
+                    path: "non_existent_file.md".to_string(),
+                    note: None,
+                },
+            ],
+        });
+
+        let agent = ClaudeAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "CLAUDE.md");
+
+        // Confirm original content is included
+        assert!(files[0].content.contains("# Test Content"));
+        assert!(files[0].content.contains("This is a test."));
+
+        // Confirm import file is included
+        assert!(files[0].content.contains("# Test import file"));
+        assert!(files[0].content.contains("@"));
+
+        // Confirm it's pure Markdown (no frontmatter)
+        assert!(!files[0].content.starts_with("---"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_import_files_only() {
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // Don't create any markdown files in docs directory (empty base_docs_dir)
+
+        // Create import files for testing
+        let import_file_path = docs_path.join("import_only.md");
+        fs::write(&import_file_path, "Only import content")
+            .await
+            .unwrap();
+
+        // Create config with import files only
+        let mut config = create_test_config(&docs_path.to_string_lossy());
+        config.agents.claude = ClaudeConfig::Advanced(ClaudeAgentConfig {
+            enabled: true,
+            output_mode: None,
+            include_filenames: Some(false),
+            base_docs_dir: None,
+            import_files: vec![ImportFile {
+                path: import_file_path.to_string_lossy().to_string(),
+                note: Some("Import only file".to_string()),
+            }],
+        });
+
+        let agent = ClaudeAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, "CLAUDE.md");
+
+        // Confirm import file is included
+        assert!(files[0].content.contains("# Import only file"));
+        assert!(files[0].content.contains("@"));
     }
 }

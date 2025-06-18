@@ -211,8 +211,17 @@ agents:
         - file_patterns: ["*frontend*", "*ui*"]
           apply_to: ["**/*.ts", "**/*.tsx"]
 
+  # Claude Code with import files (uses @filepath notation)
+  claude:
+    enabled: true
+    import_files:
+      - path: "~/.claude/my-project-instructions.md"
+        note: "Personal coding style preferences"
+      - path: "./docs/api-reference.md"
+        note: "API documentation"
+      - path: "/absolute/path/to/config.md"
+
   # Simple configurations
-  claude: true
   cline: false
   codex: false
 ```
@@ -250,6 +259,9 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.cursor.split_config.rules[].manual`        | boolean            | -        | `false`          | Manual reference only                    |
 | `agents.cursor.split_config.rules[].globs`         | list<string>       | -        | -                | Auto-attach file patterns                |
 | `agents.github.split_config.rules[].apply_to`      | list<string>       | -        | -                | Target file patterns for application     |
+| `agents.claude.import_files`                       | list               | -        | -                | Files to import using @filepath notation |
+| `agents.claude.import_files[].path`                | string             | ✓        | -                | File path (absolute, relative, or ~/)    |
+| `agents.claude.import_files[].note`                | string             | -        | -                | Optional description for the file        |
 
 ## 🏗️ Project Structure
 
@@ -291,11 +303,31 @@ your-project/
 └── frontend.instructions.md  # applyTo: "**/*.ts,**/*.tsx"
 ```
 
+### Claude Code
+
+```
+CLAUDE.md                     # Claude Code (merged with import files)
+```
+
+Example output with import_files:
+
+```markdown
+# Project Overview
+Base documentation content here...
+
+# Personal coding style preferences
+@~/.claude/my-project-instructions.md
+
+# API documentation
+@./docs/api-reference.md
+
+@/absolute/path/to/config.md
+```
+
 ### Other Agents
 
 ```
 .clinerules/context.md        # Cline (merged)
-CLAUDE.md                     # Claude Code (merged)
 AGENTS.md                     # OpenAI Codex (merged)
 ```
 
