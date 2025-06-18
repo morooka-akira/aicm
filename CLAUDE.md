@@ -229,3 +229,10 @@ cargo test --test integration_test
 - [VS Code Copilot Customization](https://code.visualstudio.com/docs/copilot/copilot-customization#_use-instructionsmd-files)
 - [Cursor Rules](https://docs.cursor.com/context/rules)
 - [OpenAI Codex](https://openai.com/ja-JP/index/introducing-codex/)
+
+# API仕様書（相対パス）
+@./docs/api-reference.md
+# ホームディレクトリのファイル
+@/Users/mor/test-file.md
+# 絶対パスのファイル
+@/absolute/path/config.md

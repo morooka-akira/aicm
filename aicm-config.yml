@@ -20,5 +20,9 @@ agents:
           apply_to: ["**/*.rs"]
   cline:
     output_mode: split
-  claude: true
+  claude: 
+    import_files:
+      - path: "./ai-context/06_rust-rule.md"
+        note: "個人のコーディングスタイル設定"
+
   codex: true

@@ -42,34 +42,36 @@ impl BaseAgentUtils {
     }
 
     /// Resolve file path from various notations (absolute, relative, tilde) for Claude import files
-    /// Returns canonical path string
+    /// Returns path string preserving relative paths as-is
     pub fn resolve_import_file_path<P: AsRef<Path>>(
         file_path: &str,
-        base_path: P,
+        _base_path: P,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
         let path = if file_path.starts_with("~/") {
             // Tilde notation: ~/path -> $HOME/path
             if let Ok(home_dir) = env::var("HOME") {
-                PathBuf::from(home_dir).join(&file_path[2..])
+                let expanded_path = PathBuf::from(home_dir).join(&file_path[2..]);
+                // Canonicalize tilde paths to get absolute path
+                match expanded_path.canonicalize() {
+                    Ok(canonical_path) => canonical_path,
+                    Err(_) => expanded_path,
+                }
             } else {
                 return Err("HOME environment variable not found".into());
             }
         } else if Path::new(file_path).is_absolute() {
-            // Absolute path
-            PathBuf::from(file_path)
+            // Absolute path - canonicalize to resolve symlinks
+            let abs_path = PathBuf::from(file_path);
+            match abs_path.canonicalize() {
+                Ok(canonical_path) => canonical_path,
+                Err(_) => abs_path,
+            }
         } else {
-            // Relative path: resolve from base_path (project root)
-            base_path.as_ref().join(file_path)
+            // Relative path: keep as relative, don't canonicalize to preserve user intent
+            PathBuf::from(file_path)
         };
 
-        // Canonicalize path and handle errors
-        match path.canonicalize() {
-            Ok(canonical_path) => Ok(canonical_path),
-            Err(_) => {
-                // If canonicalize fails (file doesn't exist), return the constructed path
-                Ok(path)
-            }
-        }
+        Ok(path)
     }
 
     /// Calculate relative path from CLAUDE.md to target file
@@ -78,6 +80,14 @@ impl BaseAgentUtils {
         from_file: P1,
         to_file: P2,
     ) -> Result<String, Box<dyn std::error::Error>> {
+        let to_path = to_file.as_ref();
+
+        // If target is already a relative path, return it as-is
+        if to_path.is_relative() {
+            return Ok(Self::normalize_path(to_path));
+        }
+
+        // For absolute paths (including expanded tilde paths), calculate relative path
         let from_dir = from_file
             .as_ref()
             .parent()
@@ -263,7 +273,9 @@ mod tests {
         assert!(result.is_ok());
 
         let resolved = result.unwrap();
-        assert_eq!(resolved, PathBuf::from("/project/docs/guide.md"));
+        // Relative paths should remain relative to preserve user intent
+        assert_eq!(resolved, PathBuf::from("docs/guide.md"));
+        assert!(resolved.is_relative());
     }
 
     #[test]
@@ -297,6 +309,19 @@ mod tests {
     }
 
     #[test]
+    fn test_calculate_claude_relative_path_with_relative_input() {
+        let claude_file = Path::new("CLAUDE.md");
+        let target_file = Path::new("docs/guide.md");
+
+        let result = BaseAgentUtils::calculate_claude_relative_path(claude_file, target_file);
+        assert!(result.is_ok());
+
+        let relative = result.unwrap();
+        // Relative paths should be returned as-is
+        assert_eq!(relative, "docs/guide.md");
+    }
+
+    #[test]
     fn test_calculate_claude_relative_path_parent_directory() {
         let claude_file = Path::new("/project/CLAUDE.md");
         let target_file = Path::new("/home/user/config.md");
@@ -315,8 +340,8 @@ mod tests {
             note: Some("Project guide".to_string()),
         };
 
-        let claude_file = Path::new("/project/CLAUDE.md");
-        let project_root = Path::new("/project");
+        let claude_file = Path::new("CLAUDE.md");
+        let project_root = Path::new(".");
 
         let result = BaseAgentUtils::format_import_file(&import_file, claude_file, project_root);
         assert!(result.is_ok());
@@ -333,8 +358,8 @@ mod tests {
             note: None,
         };
 
-        let claude_file = Path::new("/project/CLAUDE.md");
-        let project_root = Path::new("/project");
+        let claude_file = Path::new("CLAUDE.md");
+        let project_root = Path::new(".");
 
         let result = BaseAgentUtils::format_import_file(&import_file, claude_file, project_root);
         assert!(result.is_ok());
