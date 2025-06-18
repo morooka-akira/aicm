@@ -211,8 +211,17 @@ agents:
         - file_patterns: ["*frontend*", "*ui*"]
           apply_to: ["**/*.ts", "**/*.tsx"]
 
+  # Claude Code with import files (@filepath記法を使用)
+  claude:
+    enabled: true
+    import_files:
+      - path: "~/.claude/my-project-instructions.md"
+        note: "個人のコーディングスタイル設定"
+      - path: "./docs/api-reference.md"
+        note: "API仕様書"
+      - path: "/absolute/path/to/config.md"
+
   # シンプル設定
-  claude: true
   cline: false
   codex: false
 ```
@@ -250,6 +259,9 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.cursor.split_config.rules[].manual`        | boolean            | -    | `false`          | 手動参照のみ                              |
 | `agents.cursor.split_config.rules[].globs`         | list<string>       | -    | -                | 自動添付ファイルパターン                  |
 | `agents.github.split_config.rules[].apply_to`      | list<string>       | -    | -                | 適用対象ファイルパターン                  |
+| `agents.claude.import_files`                       | list               | -    | -                | @filepath記法でインポートするファイル     |
+| `agents.claude.import_files[].path`                | string             | ✓    | -                | ファイルパス（絶対、相対、または~/）      |
+| `agents.claude.import_files[].note`                | string             | -    | -                | ファイルの説明（オプション）              |
 
 ## 🏗️ プロジェクト構造
 
@@ -291,11 +303,31 @@ your-project/
 └── frontend.instructions.md  # applyTo: "**/*.ts,**/*.tsx"
 ```
 
+### Claude Code
+
+```
+CLAUDE.md                     # Claude Code（import files付きのmerged）
+```
+
+import_files付きの出力例：
+
+```markdown
+# プロジェクト概要
+ベースドキュメントの内容...
+
+# 個人のコーディングスタイル設定
+@~/.claude/my-project-instructions.md
+
+# API仕様書
+@./docs/api-reference.md
+
+@/absolute/path/to/config.md
+```
+
 ### その他のエージェント
 
 ```
 .clinerules/context.md        # Cline（merged）
-CLAUDE.md                     # Claude Code（merged）
 AGENTS.md                     # OpenAI Codex（merged）
 ```
 
