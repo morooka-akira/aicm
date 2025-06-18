@@ -230,9 +230,5 @@ cargo test --test integration_test
 - [Cursor Rules](https://docs.cursor.com/context/rules)
 - [OpenAI Codex](https://openai.com/ja-JP/index/introducing-codex/)
 
-# API仕様書（相対パス）
-@./docs/api-reference.md
-# ホームディレクトリのファイル
-@/Users/mor/test-file.md
-# 絶対パスのファイル
-@/absolute/path/config.md
+# 各エージェントの仕様を調べるときはこのファイルを参照してください
+@./ai-context/07_references.md

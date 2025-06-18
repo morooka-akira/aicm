@@ -22,7 +22,7 @@ agents:
     output_mode: split
   claude: 
     import_files:
-      - path: "./ai-context/06_rust-rule.md"
-        note: "個人のコーディングスタイル設定"
+      - path: "./ai-context/07_references.md"
+        note: "各エージェントの仕様を調べるときはこのファイルを参照してください"
 
   codex: true
