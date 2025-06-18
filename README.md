@@ -211,8 +211,19 @@ agents:
         - file_patterns: ["*frontend*", "*ui*"]
           apply_to: ["**/*.ts", "**/*.tsx"]
 
+  # Claude Code with import files (uses @filepath notation)
+  # Setting import_files allows you to embed specified files using @filepath notation
+  # Files that overlap with base_docs_dir are automatically excluded, with only the import_files version being output
+  claude:
+    enabled: true
+    import_files:
+      - path: "~/.claude/my-project-instructions.md"
+        note: "Personal coding style preferences"
+      - path: "./docs/api-reference.md"
+        note: "API documentation"
+      - path: "/absolute/path/to/config.md"
+
   # Simple configurations
-  claude: true
   cline: false
   codex: false
 ```
@@ -250,6 +261,9 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.cursor.split_config.rules[].manual`        | boolean            | -        | `false`          | Manual reference only                    |
 | `agents.cursor.split_config.rules[].globs`         | list<string>       | -        | -                | Auto-attach file patterns                |
 | `agents.github.split_config.rules[].apply_to`      | list<string>       | -        | -                | Target file patterns for application     |
+| `agents.claude.import_files`                       | list               | -        | -                | Files to import using @filepath notation |
+| `agents.claude.import_files[].path`                | string             | ✓        | -                | File path (absolute, relative, or ~/)    |
+| `agents.claude.import_files[].note`                | string             | -        | -                | Optional description for the file        |
 
 ## 🏗️ Project Structure
 
@@ -291,11 +305,50 @@ your-project/
 └── frontend.instructions.md  # applyTo: "**/*.ts,**/*.tsx"
 ```
 
+### Claude Code
+
+```
+CLAUDE.md                     # Claude Code (merged with import files)
+```
+
+#### ✨ @path/to/import syntax
+
+**You can embed base_docs_dir (or external files) using @path/to/import syntax**. Files specified in `import_files` are output as Claude Code's @filepath notation, with automatic duplicate exclusion when files overlap with base_docs_dir.
+
+**Usage example:**
+
+```yaml
+# Configuration file
+agents:
+  claude:
+    enabled: true
+    import_files:
+      # Personal settings file
+      - path: "~/.claude/my-project-instructions.md"
+        note: "Personal coding style preferences"
+      # External project file
+      - path: "../shared/api-docs.md"
+        note: "Shared API documentation"
+      # File without note
+      - path: "./docs/database-schema.md"
+```
+
+**↓ Generated CLAUDE.md**
+
+```markdown
+# Personal coding style preferences
+@~/.claude/my-project-instructions.md
+
+# Shared API documentation
+@../shared/api-docs.md
+
+@./docs/database-schema.md
+```
+
 ### Other Agents
 
 ```
 .clinerules/context.md        # Cline (merged)
-CLAUDE.md                     # Claude Code (merged)
 AGENTS.md                     # OpenAI Codex (merged)
 ```
 

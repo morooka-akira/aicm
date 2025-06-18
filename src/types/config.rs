@@ -6,6 +6,16 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Import file configuration for Claude agent
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ImportFile {
+    /// File path (absolute, relative, or tilde notation)
+    pub path: String,
+    /// Optional note/description for the file
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
 /// Main configuration file structure (simplified version)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AIContextConfig {
@@ -220,6 +230,9 @@ pub struct ClaudeAgentConfig {
     /// Base documentation directory (optional, overrides global setting)
     #[serde(default)]
     pub base_docs_dir: Option<String>,
+    /// Import files to include in output using @filepath notation
+    #[serde(default)]
+    pub import_files: Vec<ImportFile>,
 }
 
 /// Codex agent detailed configuration
@@ -703,6 +716,7 @@ mod tests {
             include_filenames: None,
             output_mode: Some(OutputMode::Split), // Set but ignored
             base_docs_dir: None,
+            import_files: Vec::new(),
         });
 
         // Claude is always merged

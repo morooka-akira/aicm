@@ -211,8 +211,19 @@ agents:
         - file_patterns: ["*frontend*", "*ui*"]
           apply_to: ["**/*.ts", "**/*.tsx"]
 
+  # Claude Code with import files (@filepath記法を使用)
+  # import_filesを設定すると、指定したファイルを@filepath記法として埋め込むことができます
+  # base_docs_dirと重複するファイルは自動的に除外され、import_files版のみが出力されます
+  claude:
+    enabled: true
+    import_files:
+      - path: "~/.claude/my-project-instructions.md"
+        note: "個人のコーディングスタイル設定"
+      - path: "./docs/api-reference.md"
+        note: "API仕様書"
+      - path: "/absolute/path/to/config.md"
+
   # シンプル設定
-  claude: true
   cline: false
   codex: false
 ```
@@ -250,6 +261,9 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.cursor.split_config.rules[].manual`        | boolean            | -    | `false`          | 手動参照のみ                              |
 | `agents.cursor.split_config.rules[].globs`         | list<string>       | -    | -                | 自動添付ファイルパターン                  |
 | `agents.github.split_config.rules[].apply_to`      | list<string>       | -    | -                | 適用対象ファイルパターン                  |
+| `agents.claude.import_files`                       | list               | -    | -                | @filepath記法でインポートするファイル     |
+| `agents.claude.import_files[].path`                | string             | ✓    | -                | ファイルパス（絶対、相対、または~/）      |
+| `agents.claude.import_files[].note`                | string             | -    | -                | ファイルの説明（オプション）              |
 
 ## 🏗️ プロジェクト構造
 
@@ -291,11 +305,50 @@ your-project/
 └── frontend.instructions.md  # applyTo: "**/*.ts,**/*.tsx"
 ```
 
+### Claude Code
+
+```
+CLAUDE.md                     # Claude Code（import files付きのmerged）
+```
+
+#### ✨ @path/to/import構文
+
+**base_docs_dir（または外部ファイル）を @path/to/import構文 で埋め込むことができます**。`import_files` に指定されたファイルは Claude Code の @filepath記法として出力され、base_docs_dir と重複するファイルは自動的に重複排除されます。
+
+**使用例:**
+
+```yaml
+# 設定ファイル
+agents:
+  claude:
+    enabled: true
+    import_files:
+      # 個人設定ファイル
+      - path: "~/.claude/my-project-instructions.md"
+        note: "個人のコーディングスタイル設定"
+      # プロジェクト外のファイル
+      - path: "../shared/api-docs.md"
+        note: "共通API仕様書"
+      # noteなしのファイル
+      - path: "./docs/database-schema.md"
+```
+
+**↓ 出力される CLAUDE.md**
+
+```markdown
+# 個人のコーディングスタイル設定
+@~/.claude/my-project-instructions.md
+
+# 共通API仕様書
+@../shared/api-docs.md
+
+@./docs/database-schema.md
+```
+
 ### その他のエージェント
 
 ```
 .clinerules/context.md        # Cline（merged）
-CLAUDE.md                     # Claude Code（merged）
 AGENTS.md                     # OpenAI Codex（merged）
 ```
 

@@ -17,6 +17,7 @@ mod include_filenames_tests {
                 output_mode: Some(OutputMode::Merged),
                 include_filenames: Some(include_filenames),
                 base_docs_dir: None,
+                import_files: Vec::new(),
             })
         } else {
             ClaudeConfig::Simple(true)
