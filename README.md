@@ -311,29 +311,39 @@ your-project/
 CLAUDE.md                     # Claude Code (merged with import files)
 ```
 
-Example output with import_files:
-
-```markdown
-# Project Overview
-Base documentation content here...
-
-# Personal coding style preferences
-@~/.claude/my-project-instructions.md
-
-# API documentation
-@./docs/api-reference.md
-
-@/absolute/path/to/config.md
-```
-
 #### ✨ @path/to/import syntax
 
 **You can embed base_docs_dir (or external files) using @path/to/import syntax**. Files specified in `import_files` are output as Claude Code's @filepath notation, with automatic duplicate exclusion when files overlap with base_docs_dir.
 
-**Example scenario:**
-- `base_docs_dir`: `./docs/` contains `api-reference.md`
-- `import_files`: includes `./docs/api-reference.md`
-- **Result**: `@./docs/api-reference.md` appears in CLAUDE.md (no duplication)
+**Usage example:**
+
+```yaml
+# Configuration file
+agents:
+  claude:
+    enabled: true
+    import_files:
+      # Personal settings file
+      - path: "~/.claude/my-project-instructions.md"
+        note: "Personal coding style preferences"
+      # External project file
+      - path: "../shared/api-docs.md"
+        note: "Shared API documentation"
+      # File without note
+      - path: "./docs/database-schema.md"
+```
+
+**↓ Generated CLAUDE.md**
+
+```markdown
+# Personal coding style preferences
+@~/.claude/my-project-instructions.md
+
+# Shared API documentation
+@../shared/api-docs.md
+
+@./docs/database-schema.md
+```
 
 ### Other Agents
 

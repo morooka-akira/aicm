@@ -311,29 +311,39 @@ your-project/
 CLAUDE.md                     # Claude Code（import files付きのmerged）
 ```
 
-import_files付きの出力例：
-
-```markdown
-# プロジェクト概要
-ベースドキュメントの内容...
-
-# 個人のコーディングスタイル設定
-@~/.claude/my-project-instructions.md
-
-# API仕様書
-@./docs/api-reference.md
-
-@/absolute/path/to/config.md
-```
-
 #### ✨ @path/to/import構文
 
 **base_docs_dir（または外部ファイル）を @path/to/import構文 で埋め込むことができます**。`import_files` に指定されたファイルは Claude Code の @filepath記法として出力され、base_docs_dir と重複するファイルは自動的に重複排除されます。
 
 **使用例:**
-- `base_docs_dir`: `./docs/` に `api-reference.md` が存在
-- `import_files`: `./docs/api-reference.md` を指定
-- **結果**: CLAUDE.md には `@./docs/api-reference.md` として出力される（重複なし）
+
+```yaml
+# 設定ファイル
+agents:
+  claude:
+    enabled: true
+    import_files:
+      # 個人設定ファイル
+      - path: "~/.claude/my-project-instructions.md"
+        note: "個人のコーディングスタイル設定"
+      # プロジェクト外のファイル
+      - path: "../shared/api-docs.md"
+        note: "共通API仕様書"
+      # noteなしのファイル
+      - path: "./docs/database-schema.md"
+```
+
+**↓ 出力される CLAUDE.md**
+
+```markdown
+# 個人のコーディングスタイル設定
+@~/.claude/my-project-instructions.md
+
+# 共通API仕様書
+@../shared/api-docs.md
+
+@./docs/database-schema.md
+```
 
 ### その他のエージェント
 
