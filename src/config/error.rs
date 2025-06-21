@@ -21,7 +21,7 @@ pub enum ConfigError {
     },
 
     /// YAML parsing error
-    #[error("YAML file parsing error occurred")]
+    #[error("YAML parsing error: {source}")]
     YamlError {
         #[from]
         source: serde_yaml::Error,
@@ -70,9 +70,7 @@ mod tests {
         let yaml_error = serde_yaml::from_str::<serde_yaml::Value>(yaml_content).unwrap_err();
         let config_error = ConfigError::YamlError { source: yaml_error };
 
-        assert!(config_error
-            .to_string()
-            .contains("YAML file parsing error occurred"));
+        assert!(config_error.to_string().contains("YAML parsing error"));
     }
 
     #[test]
