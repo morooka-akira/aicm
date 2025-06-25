@@ -1,7 +1,7 @@
 # Rust/Cargo
 /target/
 **/*.rs.bk
-Cargo.lock
+
 
 # Generated executables
 /target/debug/
