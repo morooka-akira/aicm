@@ -46,6 +46,7 @@ flowchart LR
         OUT3[.github/instructions/*.md]
         OUT4[CLAUDE.md]
         OUT5[AGENTS.md]
+        OUT6[GEMINI.md]
     end
     
     CONFIG --> PROCESS
@@ -58,6 +59,7 @@ flowchart LR
     PROCESS --> OUT3
     PROCESS --> OUT4
     PROCESS --> OUT5
+    PROCESS --> OUT6
     
     style CONFIG fill:#e3f2fd
     style DOC1 fill:#e8f5e8
@@ -69,6 +71,7 @@ flowchart LR
     style OUT3 fill:#f1f8e9
     style OUT4 fill:#f1f8e9
     style OUT5 fill:#f1f8e9
+    style OUT6 fill:#f1f8e9
 ```
 
 ### 🎯 Supported Tools
@@ -80,6 +83,7 @@ flowchart LR
 | **✅ GitHub Copilot** | `.github/instructions/*.instructions.md` | ApplyTo options, frontmatter     |
 | **✅ Claude Code**    | `CLAUDE.md`                              | Merged context file              |
 | **✅ OpenAI Codex**   | `AGENTS.md`                              | Merged context file              |
+| **✅ Google Gemini**  | `GEMINI.md`                              | Merged context file              |
 
 ## 🚀 Installation
 
@@ -147,7 +151,7 @@ aicm validate
 
 | Option            | Short | Type   | Description                                                                   |
 | ----------------- | ----- | ------ | ----------------------------------------------------------------------------- |
-| `--agent <name>`  | -     | string | Generate files for specific agent only (cursor, cline, github, claude, codex) |
+| `--agent <name>`  | -     | string | Generate files for specific agent only (cursor, cline, github, claude, codex, gemini) |
 | `--config <path>` | `-c`  | path   | Use alternative configuration file instead of aicm-config.yml                 |
 | `--version`       | `-V`  | -      | Display current version from Cargo.toml                                      |
 
@@ -171,6 +175,7 @@ agents:
   github: true
   claude: true
   codex: false
+  gemini: false
 ```
 
 ### Advanced Configuration
@@ -226,6 +231,7 @@ agents:
   # Simple configurations
   cline: false
   codex: false
+  gemini: false
 ```
 
 ### External Configuration Files
@@ -350,6 +356,7 @@ agents:
 ```
 .clinerules/context.md        # Cline (merged)
 AGENTS.md                     # OpenAI Codex (merged)
+GEMINI.md                     # Google Gemini (merged)
 ```
 
 ## 🧪 Testing
