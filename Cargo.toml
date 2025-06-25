@@ -1,6 +1,6 @@
 [package]
 name = "aicm"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 authors = ["Morooka Akira <morooka.akira@gmail.com>"]
 description = "AI Code Agent Context Management CLI tool for generating context files for multiple AI coding agents"
