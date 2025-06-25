@@ -61,6 +61,9 @@ pub struct AgentConfig {
     /// OpenAI Codex agent
     #[serde(default)]
     pub codex: CodexConfig,
+    /// Google Gemini CLI agent
+    #[serde(default)]
+    pub gemini: GeminiConfig,
 }
 
 /// Cursor agent configuration
@@ -111,6 +114,16 @@ pub enum CodexConfig {
     Simple(bool),
     /// Detailed configuration
     Advanced(CodexAgentConfig),
+}
+
+/// Gemini agent configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum GeminiConfig {
+    /// Simple configuration (backward compatibility)
+    Simple(bool),
+    /// Detailed configuration
+    Advanced(GeminiAgentConfig),
 }
 
 /// Cursor agent detailed configuration
@@ -252,6 +265,23 @@ pub struct CodexAgentConfig {
     pub base_docs_dir: Option<String>,
 }
 
+/// Gemini agent detailed configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeminiAgentConfig {
+    /// Agent enable/disable (default: true)
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Output mode (optional, Gemini is always merged)
+    #[serde(default)]
+    pub output_mode: Option<OutputMode>,
+    /// Whether to include filename headers in merged mode (optional, overrides global setting)
+    #[serde(default)]
+    pub include_filenames: Option<bool>,
+    /// Base documentation directory (optional, overrides global setting)
+    #[serde(default)]
+    pub base_docs_dir: Option<String>,
+}
+
 /// Default value: true
 fn default_true() -> bool {
     true
@@ -288,6 +318,12 @@ impl Default for CodexConfig {
     }
 }
 
+impl Default for GeminiConfig {
+    fn default() -> Self {
+        Self::Simple(false)
+    }
+}
+
 impl Default for AIContextConfig {
     fn default() -> Self {
         Self {
@@ -319,6 +355,9 @@ impl AIContextConfig {
         if self.agents.codex.is_enabled() {
             agents.push("codex".to_string());
         }
+        if self.agents.gemini.is_enabled() {
+            agents.push("gemini".to_string());
+        }
         agents
     }
 
@@ -348,6 +387,7 @@ impl AIContextConfig {
                 .unwrap_or_else(|| self.get_global_output_mode()),
             "claude" => OutputMode::Merged, // Claude is always merged
             "codex" => OutputMode::Merged,  // Codex is always merged
+            "gemini" => OutputMode::Merged, // Gemini is always merged
             _ => self.get_global_output_mode(),
         }
     }
@@ -379,6 +419,11 @@ impl AIContextConfig {
             "codex" => self
                 .agents
                 .codex
+                .get_include_filenames()
+                .unwrap_or_else(|| self.include_filenames.unwrap_or(false)),
+            "gemini" => self
+                .agents
+                .gemini
                 .get_include_filenames()
                 .unwrap_or_else(|| self.include_filenames.unwrap_or(false)),
             _ => self.include_filenames.unwrap_or(false),
@@ -416,6 +461,12 @@ impl AIContextConfig {
             "codex" => self
                 .agents
                 .codex
+                .get_base_docs_dir()
+                .map(|s| s.as_str())
+                .unwrap_or(&self.base_docs_dir),
+            "gemini" => self
+                .agents
+                .gemini
                 .get_base_docs_dir()
                 .map(|s| s.as_str())
                 .unwrap_or(&self.base_docs_dir),
@@ -596,6 +647,36 @@ impl AgentConfigTrait for CodexConfig {
     }
 }
 
+impl AgentConfigTrait for GeminiConfig {
+    fn is_enabled(&self) -> bool {
+        match self {
+            Self::Simple(enabled) => *enabled,
+            Self::Advanced(config) => config.enabled,
+        }
+    }
+
+    fn get_output_mode(&self) -> Option<OutputMode> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.output_mode.clone(),
+        }
+    }
+
+    fn get_include_filenames(&self) -> Option<bool> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.include_filenames,
+        }
+    }
+
+    fn get_base_docs_dir(&self) -> Option<&String> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.base_docs_dir.as_ref(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -613,6 +694,7 @@ mod tests {
         assert!(!config.agents.github.is_enabled());
         assert!(!config.agents.claude.is_enabled());
         assert!(!config.agents.codex.is_enabled());
+        assert!(!config.agents.gemini.is_enabled());
     }
 
     #[test]
@@ -627,12 +709,14 @@ mod tests {
         config.agents.cursor = CursorConfig::Simple(true);
         config.agents.claude = ClaudeConfig::Simple(true);
         config.agents.codex = CodexConfig::Simple(true);
+        config.agents.gemini = GeminiConfig::Simple(true);
 
         let enabled = config.enabled_agents();
-        assert_eq!(enabled.len(), 3);
+        assert_eq!(enabled.len(), 4);
         assert!(enabled.contains(&"cursor".to_string()));
         assert!(enabled.contains(&"claude".to_string()));
         assert!(enabled.contains(&"codex".to_string()));
+        assert!(enabled.contains(&"gemini".to_string()));
     }
 
     #[test]
@@ -742,6 +826,26 @@ mod tests {
         // Codex is always merged
         assert_eq!(
             config.get_effective_output_mode("codex"),
+            OutputMode::Merged
+        );
+    }
+
+    #[test]
+    fn test_effective_output_mode_gemini_always_merged() {
+        let mut config = AIContextConfig {
+            output_mode: Some(OutputMode::Split),
+            ..Default::default()
+        };
+        config.agents.gemini = GeminiConfig::Advanced(GeminiAgentConfig {
+            enabled: true,
+            include_filenames: None,
+            output_mode: Some(OutputMode::Split), // Set but ignored
+            base_docs_dir: None,
+        });
+
+        // Gemini is always merged
+        assert_eq!(
+            config.get_effective_output_mode("gemini"),
             OutputMode::Merged
         );
     }
@@ -945,6 +1049,10 @@ agents:
         );
         assert_eq!(config.get_effective_base_docs_dir("codex"), "./global-docs");
         assert_eq!(
+            config.get_effective_base_docs_dir("gemini"),
+            "./global-docs"
+        );
+        assert_eq!(
             config.get_effective_base_docs_dir("unknown"),
             "./global-docs"
         );
@@ -993,6 +1101,10 @@ agents:
             "./global-docs"
         );
         assert_eq!(config.get_effective_base_docs_dir("codex"), "./global-docs");
+        assert_eq!(
+            config.get_effective_base_docs_dir("gemini"),
+            "./global-docs"
+        );
     }
 
     #[test]

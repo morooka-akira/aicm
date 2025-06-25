@@ -26,3 +26,4 @@ agents:
         note: "各エージェントの仕様を調べるときはこのファイルを参照してください"
 
   codex: true
+  gemini: true

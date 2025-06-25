@@ -46,6 +46,7 @@ flowchart LR
         OUT3[.github/instructions/*.md]
         OUT4[CLAUDE.md]
         OUT5[AGENTS.md]
+        OUT6[GEMINI.md]
     end
     
     CONFIG --> PROCESS
@@ -58,6 +59,7 @@ flowchart LR
     PROCESS --> OUT3
     PROCESS --> OUT4
     PROCESS --> OUT5
+    PROCESS --> OUT6
     
     style CONFIG fill:#e3f2fd
     style DOC1 fill:#e8f5e8
@@ -69,6 +71,7 @@ flowchart LR
     style OUT3 fill:#f1f8e9
     style OUT4 fill:#f1f8e9
     style OUT5 fill:#f1f8e9
+    style OUT6 fill:#f1f8e9
 ```
 
 ### 🎯 サポート対象ツール
@@ -80,6 +83,7 @@ flowchart LR
 | **✅ GitHub Copilot** | `.github/instructions/*.instructions.md` | ApplyTo オプション、フロントマター |
 | **✅ Claude Code**    | `CLAUDE.md`                              | 統合コンテキストファイル           |
 | **✅ OpenAI Codex**   | `AGENTS.md`                              | 統合コンテキストファイル           |
+| **✅ Google Gemini**  | `GEMINI.md`                              | 統合コンテキストファイル           |
 
 ## 🚀 インストール
 
@@ -147,7 +151,7 @@ aicm validate
 
 | オプション        | 短縮形 | タイプ | 説明                                                                       |
 | ----------------- | ------ | ------ | -------------------------------------------------------------------------- |
-| `--agent <name>`  | -      | string | 特定のエージェントのみファイル生成（cursor, cline, github, claude, codex） |
+| `--agent <name>`  | -      | string | 特定のエージェントのみファイル生成（cursor, cline, github, claude, codex, gemini） |
 | `--config <path>` | `-c`   | path   | aicm-config.yml の代わりに代替設定ファイルを使用                           |
 | `--version`       | `-V`   | -      | Cargo.toml から現在のバージョンを表示                                     |
 
@@ -171,6 +175,7 @@ agents:
   github: true
   claude: true
   codex: false
+  gemini: false
 ```
 
 ### 高度な設定
@@ -226,6 +231,7 @@ agents:
   # シンプル設定
   cline: false
   codex: false
+  gemini: false
 ```
 
 ### 外部設定ファイル
@@ -350,6 +356,7 @@ agents:
 ```
 .clinerules/context.md        # Cline（merged）
 AGENTS.md                     # OpenAI Codex（merged）
+GEMINI.md                     # Google Gemini（merged）
 ```
 
 ## 🧪 テスト

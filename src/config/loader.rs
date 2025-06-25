@@ -115,6 +115,10 @@ impl ConfigLoader {
             "  # OpenAI Codex Agent - Generates AGENTS.md file",
             "  codex:",
             "    enabled: true",
+            "",
+            "  # Google Gemini CLI Agent - Generates GEMINI.md file",
+            "  gemini:",
+            "    enabled: true",
         ];
 
         template.join("\n")
@@ -266,6 +270,7 @@ agents: not_an_object
         assert!(!config.agents.cline.is_enabled());
         assert!(!config.agents.github.is_enabled());
         assert!(!config.agents.claude.is_enabled());
+        assert!(!config.agents.gemini.is_enabled());
 
         // Confirm file was actually created
         assert!(config_path.exists());
@@ -318,5 +323,6 @@ agents:
         assert!(!config.agents.cline.is_enabled()); // default false
         assert!(!config.agents.github.is_enabled()); // default false
         assert!(!config.agents.claude.is_enabled()); // default false
+        assert!(!config.agents.gemini.is_enabled()); // default false
     }
 }

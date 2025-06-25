@@ -15,3 +15,4 @@
 - [VS Code Copilot Customization](https://code.visualstudio.com/docs/copilot/copilot-customization#_use-instructionsmd-files)
 - [Cursor Rules](https://docs.cursor.com/context/rules)
 - [OpenAI Codex](https://openai.com/ja-JP/index/introducing-codex/)
+- [Google Gemini CLI](https://github.com/google-gemini/gemini-cli)
