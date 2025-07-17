@@ -10,6 +10,7 @@ use aicm::agents::codex::CodexAgent;
 use aicm::agents::cursor::CursorAgent;
 use aicm::agents::gemini::GeminiAgent;
 use aicm::agents::github::GitHubAgent;
+use aicm::agents::kiro::KiroAgent;
 use aicm::config::{error::ConfigError, loader::ConfigLoader};
 use aicm::types::{AIContextConfig, GeneratedFile};
 use aicm::DEFAULT_CONFIG_FILE;
@@ -232,6 +233,10 @@ async fn generate_agent_files(
         }
         "gemini" => {
             let agent = GeminiAgent::new(config.clone());
+            agent.generate().await
+        }
+        "kiro" => {
+            let agent = KiroAgent::new(config.clone());
             agent.generate().await
         }
         _ => Err(anyhow::anyhow!("Unsupported agent: {}", agent_name)),

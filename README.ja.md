@@ -47,6 +47,7 @@ flowchart LR
         OUT4[CLAUDE.md]
         OUT5[AGENTS.md]
         OUT6[GEMINI.md]
+        OUT7[.kiro/steering/*.md]
     end
     
     CONFIG --> PROCESS
@@ -60,6 +61,7 @@ flowchart LR
     PROCESS --> OUT4
     PROCESS --> OUT5
     PROCESS --> OUT6
+    PROCESS --> OUT7
     
     style CONFIG fill:#e3f2fd
     style DOC1 fill:#e8f5e8
@@ -72,6 +74,7 @@ flowchart LR
     style OUT4 fill:#f1f8e9
     style OUT5 fill:#f1f8e9
     style OUT6 fill:#f1f8e9
+    style OUT7 fill:#f1f8e9
 ```
 
 ### 🎯 サポート対象ツール
@@ -84,6 +87,7 @@ flowchart LR
 | **✅ Claude Code**    | `CLAUDE.md`                              | 統合コンテキストファイル           |
 | **✅ OpenAI Codex**   | `AGENTS.md`                              | 統合コンテキストファイル           |
 | **✅ Google Gemini**  | `GEMINI.md`                              | 統合コンテキストファイル           |
+| **✅ Kiro**           | `.kiro/steering/*.md`                    | 分割Markdownファイル               |
 
 ## 🚀 インストール
 
@@ -151,7 +155,7 @@ aicm validate
 
 | オプション        | 短縮形 | タイプ | 説明                                                                       |
 | ----------------- | ------ | ------ | -------------------------------------------------------------------------- |
-| `--agent <name>`  | -      | string | 特定のエージェントのみファイル生成（cursor, cline, github, claude, codex, gemini） |
+| `--agent <name>`  | -      | string | 特定のエージェントのみファイル生成（cursor, cline, github, claude, codex, gemini, kiro） |
 | `--config <path>` | `-c`   | path   | aicm-config.yml の代わりに代替設定ファイルを使用                           |
 | `--version`       | `-V`   | -      | Cargo.toml から現在のバージョンを表示                                     |
 
@@ -176,6 +180,7 @@ agents:
   claude: true
   codex: false
   gemini: false
+  kiro: false
 ```
 
 ### 高度な設定
@@ -232,6 +237,7 @@ agents:
   cline: false
   codex: false
   gemini: false
+  kiro: false
 ```
 
 ### 外部設定ファイル
@@ -349,6 +355,15 @@ agents:
 @../shared/api-docs.md
 
 @./docs/database-schema.md
+```
+
+### Kiro
+
+```
+.kiro/steering/
+├── project-overview.md       # Split モードファイル
+├── architecture.md
+└── development-rules.md
 ```
 
 ### その他のエージェント

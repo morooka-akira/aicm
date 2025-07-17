@@ -27,3 +27,4 @@ agents:
 
   codex: true
   gemini: true
+  kiro: true

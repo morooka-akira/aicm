@@ -47,6 +47,7 @@ flowchart LR
         OUT4[CLAUDE.md]
         OUT5[AGENTS.md]
         OUT6[GEMINI.md]
+        OUT7[.kiro/steering/*.md]
     end
     
     CONFIG --> PROCESS
@@ -60,6 +61,7 @@ flowchart LR
     PROCESS --> OUT4
     PROCESS --> OUT5
     PROCESS --> OUT6
+    PROCESS --> OUT7
     
     style CONFIG fill:#e3f2fd
     style DOC1 fill:#e8f5e8
@@ -72,6 +74,7 @@ flowchart LR
     style OUT4 fill:#f1f8e9
     style OUT5 fill:#f1f8e9
     style OUT6 fill:#f1f8e9
+    style OUT7 fill:#f1f8e9
 ```
 
 ### 🎯 Supported Tools
@@ -84,6 +87,7 @@ flowchart LR
 | **✅ Claude Code**    | `CLAUDE.md`                              | Merged context file              |
 | **✅ OpenAI Codex**   | `AGENTS.md`                              | Merged context file              |
 | **✅ Google Gemini**  | `GEMINI.md`                              | Merged context file              |
+| **✅ Kiro**           | `.kiro/steering/*.md`                    | Split markdown files             |
 
 ## 🚀 Installation
 
@@ -151,7 +155,7 @@ aicm validate
 
 | Option            | Short | Type   | Description                                                                   |
 | ----------------- | ----- | ------ | ----------------------------------------------------------------------------- |
-| `--agent <name>`  | -     | string | Generate files for specific agent only (cursor, cline, github, claude, codex, gemini) |
+| `--agent <name>`  | -     | string | Generate files for specific agent only (cursor, cline, github, claude, codex, gemini, kiro) |
 | `--config <path>` | `-c`  | path   | Use alternative configuration file instead of aicm-config.yml                 |
 | `--version`       | `-V`  | -      | Display current version from Cargo.toml                                      |
 
@@ -176,6 +180,7 @@ agents:
   claude: true
   codex: false
   gemini: false
+  kiro: false
 ```
 
 ### Advanced Configuration
@@ -232,6 +237,7 @@ agents:
   cline: false
   codex: false
   gemini: false
+  kiro: false
 ```
 
 ### External Configuration Files
@@ -349,6 +355,15 @@ agents:
 @../shared/api-docs.md
 
 @./docs/database-schema.md
+```
+
+### Kiro
+
+```
+.kiro/steering/
+├── project-overview.md       # Split mode files
+├── architecture.md
+└── development-rules.md
 ```
 
 ### Other Agents

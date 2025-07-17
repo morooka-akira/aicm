@@ -64,6 +64,9 @@ pub struct AgentConfig {
     /// Google Gemini CLI agent
     #[serde(default)]
     pub gemini: GeminiConfig,
+    /// Kiro agent
+    #[serde(default)]
+    pub kiro: KiroConfig,
 }
 
 /// Cursor agent configuration
@@ -124,6 +127,16 @@ pub enum GeminiConfig {
     Simple(bool),
     /// Detailed configuration
     Advanced(GeminiAgentConfig),
+}
+
+/// Kiro agent configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum KiroConfig {
+    /// Simple configuration (backward compatibility)
+    Simple(bool),
+    /// Detailed configuration
+    Advanced(KiroAgentConfig),
 }
 
 /// Cursor agent detailed configuration
@@ -282,6 +295,23 @@ pub struct GeminiAgentConfig {
     pub base_docs_dir: Option<String>,
 }
 
+/// Kiro agent detailed configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct KiroAgentConfig {
+    /// Agent enable/disable (default: true)
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Output mode (optional, Kiro is always split)
+    #[serde(default)]
+    pub output_mode: Option<OutputMode>,
+    /// Whether to include filename headers in merged mode (optional, overrides global setting)
+    #[serde(default)]
+    pub include_filenames: Option<bool>,
+    /// Base documentation directory (optional, overrides global setting)
+    #[serde(default)]
+    pub base_docs_dir: Option<String>,
+}
+
 /// Default value: true
 fn default_true() -> bool {
     true
@@ -324,6 +354,12 @@ impl Default for GeminiConfig {
     }
 }
 
+impl Default for KiroConfig {
+    fn default() -> Self {
+        Self::Simple(false)
+    }
+}
+
 impl Default for AIContextConfig {
     fn default() -> Self {
         Self {
@@ -358,6 +394,9 @@ impl AIContextConfig {
         if self.agents.gemini.is_enabled() {
             agents.push("gemini".to_string());
         }
+        if self.agents.kiro.is_enabled() {
+            agents.push("kiro".to_string());
+        }
         agents
     }
 
@@ -388,6 +427,7 @@ impl AIContextConfig {
             "claude" => OutputMode::Merged, // Claude is always merged
             "codex" => OutputMode::Merged,  // Codex is always merged
             "gemini" => OutputMode::Merged, // Gemini is always merged
+            "kiro" => OutputMode::Split,    // Kiro is always split
             _ => self.get_global_output_mode(),
         }
     }
@@ -424,6 +464,11 @@ impl AIContextConfig {
             "gemini" => self
                 .agents
                 .gemini
+                .get_include_filenames()
+                .unwrap_or_else(|| self.include_filenames.unwrap_or(false)),
+            "kiro" => self
+                .agents
+                .kiro
                 .get_include_filenames()
                 .unwrap_or_else(|| self.include_filenames.unwrap_or(false)),
             _ => self.include_filenames.unwrap_or(false),
@@ -467,6 +512,12 @@ impl AIContextConfig {
             "gemini" => self
                 .agents
                 .gemini
+                .get_base_docs_dir()
+                .map(|s| s.as_str())
+                .unwrap_or(&self.base_docs_dir),
+            "kiro" => self
+                .agents
+                .kiro
                 .get_base_docs_dir()
                 .map(|s| s.as_str())
                 .unwrap_or(&self.base_docs_dir),
@@ -677,6 +728,36 @@ impl AgentConfigTrait for GeminiConfig {
     }
 }
 
+impl AgentConfigTrait for KiroConfig {
+    fn is_enabled(&self) -> bool {
+        match self {
+            Self::Simple(enabled) => *enabled,
+            Self::Advanced(config) => config.enabled,
+        }
+    }
+
+    fn get_output_mode(&self) -> Option<OutputMode> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.output_mode.clone(),
+        }
+    }
+
+    fn get_include_filenames(&self) -> Option<bool> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.include_filenames,
+        }
+    }
+
+    fn get_base_docs_dir(&self) -> Option<&String> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => config.base_docs_dir.as_ref(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -695,6 +776,7 @@ mod tests {
         assert!(!config.agents.claude.is_enabled());
         assert!(!config.agents.codex.is_enabled());
         assert!(!config.agents.gemini.is_enabled());
+        assert!(!config.agents.kiro.is_enabled());
     }
 
     #[test]
@@ -710,13 +792,15 @@ mod tests {
         config.agents.claude = ClaudeConfig::Simple(true);
         config.agents.codex = CodexConfig::Simple(true);
         config.agents.gemini = GeminiConfig::Simple(true);
+        config.agents.kiro = KiroConfig::Simple(true);
 
         let enabled = config.enabled_agents();
-        assert_eq!(enabled.len(), 4);
+        assert_eq!(enabled.len(), 5);
         assert!(enabled.contains(&"cursor".to_string()));
         assert!(enabled.contains(&"claude".to_string()));
         assert!(enabled.contains(&"codex".to_string()));
         assert!(enabled.contains(&"gemini".to_string()));
+        assert!(enabled.contains(&"kiro".to_string()));
     }
 
     #[test]
@@ -848,6 +932,23 @@ mod tests {
             config.get_effective_output_mode("gemini"),
             OutputMode::Merged
         );
+    }
+
+    #[test]
+    fn test_effective_output_mode_kiro_always_split() {
+        let mut config = AIContextConfig {
+            output_mode: Some(OutputMode::Merged),
+            ..Default::default()
+        };
+        config.agents.kiro = KiroConfig::Advanced(KiroAgentConfig {
+            enabled: true,
+            include_filenames: None,
+            output_mode: Some(OutputMode::Merged), // Set but ignored
+            base_docs_dir: None,
+        });
+
+        // Kiro is always split
+        assert_eq!(config.get_effective_output_mode("kiro"), OutputMode::Split);
     }
 
     #[test]
@@ -1052,6 +1153,7 @@ agents:
             config.get_effective_base_docs_dir("gemini"),
             "./global-docs"
         );
+        assert_eq!(config.get_effective_base_docs_dir("kiro"), "./global-docs");
         assert_eq!(
             config.get_effective_base_docs_dir("unknown"),
             "./global-docs"
@@ -1105,6 +1207,7 @@ agents:
             config.get_effective_base_docs_dir("gemini"),
             "./global-docs"
         );
+        assert_eq!(config.get_effective_base_docs_dir("kiro"), "./global-docs");
     }
 
     #[test]
@@ -1158,5 +1261,6 @@ agents:
         );
         assert_eq!(config.get_effective_base_docs_dir("github"), "./ai-context");
         assert_eq!(config.get_effective_base_docs_dir("claude"), "./ai-context");
+        assert_eq!(config.get_effective_base_docs_dir("kiro"), "./ai-context");
     }
 }
