@@ -145,9 +145,11 @@ impl ClaudeAgent {
         let include_filenames = self.config.get_effective_include_filenames("claude");
         for (file_path, file_content) in &filtered_base_docs {
             if include_filenames {
-                content.push_str(&format!("# {}\n\n{}\n\n", file_path, file_content.trim()));
+                let trimmed_content = file_content.trim();
+                content.push_str(&format!("# {file_path}\n\n{trimmed_content}\n\n"));
             } else {
-                content.push_str(&format!("{}\n\n", file_content.trim()));
+                let trimmed_content = file_content.trim();
+                content.push_str(&format!("{trimmed_content}\n\n"));
             }
         }
 

@@ -57,7 +57,7 @@ impl CursorAgent {
         self.prepare_rules_directory(&rules_dir).await?;
 
         Ok(vec![GeneratedFile::new(
-            format!("{}/context.mdc", rules_dir),
+            format!("{rules_dir}/context.mdc"),
             mdc_content,
         )])
     }
@@ -90,7 +90,7 @@ impl CursorAgent {
                         let safe_name = base_name.replace(['/', '\\'], "_");
 
                         generated_files.push(GeneratedFile::new(
-                            format!("{}/{}.mdc", rules_dir, safe_name),
+                            format!("{rules_dir}/{safe_name}.mdc"),
                             mdc_content,
                         ));
                         processed_files.insert(file_name.clone());
@@ -106,7 +106,7 @@ impl CursorAgent {
                     let safe_name = base_name.replace(['/', '\\'], "_");
 
                     generated_files.push(GeneratedFile::new(
-                        format!("{}/{}.mdc", rules_dir, safe_name),
+                        format!("{rules_dir}/{safe_name}.mdc"),
                         mdc_content,
                     ));
                 }
@@ -121,7 +121,7 @@ impl CursorAgent {
                 let safe_name = base_name.replace(['/', '\\'], "_"); // Convert path separators to underscores
 
                 generated_files.push(GeneratedFile::new(
-                    format!("{}/{}.mdc", rules_dir, safe_name),
+                    format!("{rules_dir}/{safe_name}.mdc"),
                     mdc_content,
                 ));
             }
@@ -133,7 +133,7 @@ impl CursorAgent {
     /// Get rules directory path
     fn get_rules_dir(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
-            format!("{}/.cursor/rules", base_dir)
+            format!("{base_dir}/.cursor/rules")
         } else {
             ".cursor/rules".to_string()
         }
@@ -160,7 +160,7 @@ impl CursorAgent {
     /// Create MDC format content (YAML frontmatter + Markdown)
     fn create_mdc_content(&self, markdown_content: &str) -> String {
         let frontmatter = self.create_frontmatter();
-        format!("---\n{}---\n\n{}", frontmatter, markdown_content)
+        format!("---\n{frontmatter}---\n\n{markdown_content}")
     }
 
     /// Create YAML frontmatter (default: Always Apply format)
@@ -217,7 +217,7 @@ impl CursorAgent {
         rule: &crate::types::CursorSplitRule,
     ) -> String {
         let frontmatter = self.create_frontmatter_with_rule(rule);
-        format!("---\n{}---\n\n{}", frontmatter, markdown_content)
+        format!("---\n{frontmatter}---\n\n{markdown_content}")
     }
 
     /// Create YAML frontmatter with rule settings
@@ -232,21 +232,24 @@ impl CursorAgent {
         } else if let Some(globs) = &rule.globs {
             // Auto Attached: description:, globs: value, alwaysApply: false
             let globs_value = match globs.len() {
-                1 => format!(" {}", globs[0]),
+                1 => {
+                    let glob = &globs[0];
+                    format!(" {glob}")
+                }
                 len if len > 1 => {
                     let globs_list = globs
                         .iter()
-                        .map(|g| format!("  - {}", g))
+                        .map(|g| format!("  - {g}"))
                         .collect::<Vec<_>>()
                         .join("\n");
-                    format!("\n{}", globs_list)
+                    format!("\n{globs_list}")
                 }
                 _ => "".to_string(), // Empty for 0 case
             };
-            format!("description:\nglobs:{}\nalwaysApply: false\n", globs_value)
+            format!("description:\nglobs:{globs_value}\nalwaysApply: false\n")
         } else if let Some(desc) = &rule.description {
             // Agent Requested: description: value, globs:, alwaysApply: false
-            format!("description: {}\nglobs:\nalwaysApply: false\n", desc)
+            format!("description: {desc}\nglobs:\nalwaysApply: false\n")
         } else {
             // Default: Always Apply
             "description:\nglobs:\nalwaysApply: true\n".to_string()

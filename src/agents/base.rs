@@ -24,7 +24,7 @@ impl BaseAgentUtils {
         if normalized.is_empty() {
             String::new()
         } else {
-            format!("{}\n", normalized) // Add line break at the end
+            format!("{normalized}\n") // Add line break at the end
         }
     }
 
@@ -114,9 +114,9 @@ impl BaseAgentUtils {
 
         // Format output
         if let Some(note) = &import_file.note {
-            Ok(format!("# {}\n@{}", note, relative_path))
+            Ok(format!("# {note}\n@{relative_path}"))
         } else {
-            Ok(format!("@{}", relative_path))
+            Ok(format!("@{relative_path}"))
         }
     }
 

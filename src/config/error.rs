@@ -78,7 +78,7 @@ mod tests {
         let error = ConfigError::FileNotFound {
             path: "debug_test.yaml".to_string(),
         };
-        let debug_string = format!("{:?}", error);
+        let debug_string = format!("{error:?}");
         assert!(debug_string.contains("FileNotFound"));
         assert!(debug_string.contains("debug_test.yaml"));
     }

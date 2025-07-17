@@ -67,7 +67,7 @@ impl GitHubAgent {
         tokio::fs::create_dir_all(&github_dir).await?;
 
         let output_path = if let Some(base_dir) = &self.base_dir {
-            format!("{}/.github/copilot-instructions.md", base_dir)
+            format!("{base_dir}/.github/copilot-instructions.md")
         } else {
             ".github/copilot-instructions.md".to_string()
         };
@@ -108,12 +108,9 @@ impl GitHubAgent {
             let safe_name = base_name.replace(['/', '\\'], "_"); // Convert path separators to underscores
 
             let output_path = if let Some(base_dir) = &self.base_dir {
-                format!(
-                    "{}/.github/instructions/{}.instructions.md",
-                    base_dir, safe_name
-                )
+                format!("{base_dir}/.github/instructions/{safe_name}.instructions.md")
             } else {
-                format!(".github/instructions/{}.instructions.md", safe_name)
+                format!(".github/instructions/{safe_name}.instructions.md")
             };
 
             generated_files.push(GeneratedFile::new(output_path, instructions_content));
@@ -158,12 +155,9 @@ impl GitHubAgent {
                     let safe_name = base_name.replace(['/', '\\'], "_");
 
                     let output_path = if let Some(base_dir) = &self.base_dir {
-                        format!(
-                            "{}/.github/instructions/{}.instructions.md",
-                            base_dir, safe_name
-                        )
+                        format!("{base_dir}/.github/instructions/{safe_name}.instructions.md")
                     } else {
-                        format!(".github/instructions/{}.instructions.md", safe_name)
+                        format!(".github/instructions/{safe_name}.instructions.md")
                     };
 
                     generated_files.push(GeneratedFile::new(output_path, instructions_content));
@@ -179,12 +173,9 @@ impl GitHubAgent {
                 let safe_name = base_name.replace(['/', '\\'], "_");
 
                 let output_path = if let Some(base_dir) = &self.base_dir {
-                    format!(
-                        "{}/.github/instructions/{}.instructions.md",
-                        base_dir, safe_name
-                    )
+                    format!("{base_dir}/.github/instructions/{safe_name}.instructions.md")
                 } else {
-                    format!(".github/instructions/{}.instructions.md", safe_name)
+                    format!(".github/instructions/{safe_name}.instructions.md")
                 };
 
                 generated_files.push(GeneratedFile::new(output_path, instructions_content));
@@ -231,7 +222,7 @@ impl GitHubAgent {
         match apply_to {
             Some(patterns) if !patterns.is_empty() => {
                 let apply_to_value = patterns.join(",");
-                format!("---\napplyTo: \"{}\"\n---\n\n{}", apply_to_value, content)
+                format!("---\napplyTo: \"{apply_to_value}\"\n---\n\n{content}")
             }
             _ => content.to_string(),
         }
@@ -272,7 +263,7 @@ impl GitHubAgent {
     /// Delete merged mode file (.github/copilot-instructions.md)
     async fn cleanup_merged_file(&self) -> Result<()> {
         let merged_file_path = if let Some(base_dir) = &self.base_dir {
-            format!("{}/.github/copilot-instructions.md", base_dir)
+            format!("{base_dir}/.github/copilot-instructions.md")
         } else {
             ".github/copilot-instructions.md".to_string()
         };
@@ -286,7 +277,7 @@ impl GitHubAgent {
     /// Get GitHub directory path
     fn get_github_dir(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
-            format!("{}/.github", base_dir)
+            format!("{base_dir}/.github")
         } else {
             ".github".to_string()
         }
@@ -295,7 +286,7 @@ impl GitHubAgent {
     /// Get GitHub instructions directory path
     fn get_instructions_dir(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
-            format!("{}/.github/instructions", base_dir)
+            format!("{base_dir}/.github/instructions")
         } else {
             ".github/instructions".to_string()
         }

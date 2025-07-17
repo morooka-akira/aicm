@@ -230,3 +230,4 @@ cargo test --test integration_test
 - [Cursor Rules](https://docs.cursor.com/context/rules)
 - [OpenAI Codex](https://openai.com/ja-JP/index/introducing-codex/)
 - [Google Gemini CLI](https://github.com/google-gemini/gemini-cli)
+- [Kiro Steering](https://kiro.dev/docs/steering/)

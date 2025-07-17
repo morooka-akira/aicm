@@ -127,8 +127,8 @@ agents:
     let stderr = String::from_utf8(output.stderr).unwrap();
 
     if !output.status.success() {
-        println!("STDOUT: {}", stdout);
-        println!("STDERR: {}", stderr);
+        println!("STDOUT: {stdout}");
+        println!("STDERR: {stderr}");
     }
     assert!(output.status.success());
 

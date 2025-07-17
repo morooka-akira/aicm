@@ -13,6 +13,7 @@
 | GitHub Copilot  | `.github/copilot-instructions.md`                      | プロジェクトルート                           | ✅ (プロンプトファイル分割可能) |
 | VS Code Copilot | `.github/copilot-instructions.md` / `.instructions.md` | プロジェクトルート / `.github/instructions/` | ✅ (複数ファイル対応)           |
 | Cursor          | `.cursorrules` / `.cursor/rules/*.mdc`                 | プロジェクトルート / `.cursor/rules/`        | ✅ (MDC ファイル分割対応)       |
+| Kiro            | `.kiro/steering/*.md`                                   | プロジェクトルート                           | ✅ (Split モードのみ)           |
 
 ## 1. Claude Code
 
@@ -330,6 +331,51 @@ alwaysApply: true
 - **ファイル参照**: `@filename.ts` でファイルをコンテキストに含める
 - **チャット生成**: `/Generate Cursor Rules` コマンドでルールを生成可能
 
+## 6. Kiro
+
+### 基本形式
+
+Kiro は `.kiro/steering/` ディレクトリでコンテキストファイルを管理します。
+
+#### Split モード形式
+
+```
+your-project/
+├── .kiro/steering/            # Kiro ステアリングファイル
+│   ├── project-overview.md    # プロジェクト概要
+│   ├── architecture.md        # アーキテクチャ
+│   ├── development-rules.md   # 開発ルール
+│   └── api-reference.md       # API リファレンス
+└── ...
+```
+
+### 特徴
+
+- **Split モードのみ**: Kiro は分割ファイル配置のみをサポート
+- **純粋 Markdown**: YAML フロントマターなしの純粋な Markdown 形式
+- **ファイル名安全化**: パス区切り文字をハイフンに変換して安全化
+- **ステアリング機能**: Kiro の AI コード生成を誘導するコンテキストファイル
+
+### ファイル配置ルール
+
+- **入力**: `base_docs_dir` 内の `.md` ファイル
+- **出力**: `.kiro/steering/{sanitized_filename}.md`
+- **ファイル名変換**: `sub/dir/file.md` → `sub-dir-file.md`
+
+### 設定例
+
+```yaml
+# シンプル設定
+agents:
+  kiro: true
+
+# 詳細設定
+agents:
+  kiro:
+    enabled: true
+    base_docs_dir: ./kiro-context  # Kiro 専用ドキュメントディレクトリ
+```
+
 ## ベストプラクティス
 
 ### 共通の推奨事項
@@ -347,6 +393,7 @@ alwaysApply: true
 - **GitHub Copilot**: プロンプトファイルで再利用可能なタスクテンプレートを作成
 - **VS Code Copilot**: `applyTo` プロパティでファイル種別ごとの細かな制御
 - **Cursor**: MDC 形式のメタデータを活用した高度なルール管理
+- **Kiro**: シンプルな Markdown ファイルで AI コード生成を効果的に誘導
 
 ### 避けるべき事項
 
