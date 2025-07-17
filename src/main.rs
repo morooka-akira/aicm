@@ -65,9 +65,9 @@ async fn main() -> Result<()> {
     if let Err(e) = result {
         // Display ConfigError appropriately
         if let Some(config_error) = e.downcast_ref::<aicm::config::error::ConfigError>() {
-            eprintln!("❌ Configuration validation error: {}", config_error);
+            eprintln!("❌ Configuration validation error: {config_error}");
         } else {
-            eprintln!("❌ Error occurred: {}", e);
+            eprintln!("❌ Error occurred: {e}");
         }
         std::process::exit(1);
     }
@@ -81,11 +81,11 @@ async fn handle_init() -> Result<()> {
 
     // Check if configuration file already exists
     if Path::new(DEFAULT_CONFIG_FILE).exists() {
-        println!("⚠️  {} already exists", DEFAULT_CONFIG_FILE);
+        println!("⚠️  {DEFAULT_CONFIG_FILE} already exists");
     } else {
         // Create default configuration file
         ConfigLoader::create_default(DEFAULT_CONFIG_FILE).await?;
-        println!("✅ Created {}", DEFAULT_CONFIG_FILE);
+        println!("✅ Created {DEFAULT_CONFIG_FILE}");
     }
 
     Ok(())
@@ -94,7 +94,7 @@ async fn handle_init() -> Result<()> {
 /// Handle generate command
 async fn handle_generate(agent_filter: Option<String>, config_path: Option<String>) -> Result<()> {
     let config_file = config_path.as_deref().unwrap_or(DEFAULT_CONFIG_FILE);
-    println!("Generating context files: {}", config_file);
+    println!("Generating context files: {config_file}");
 
     // Load configuration file
     let config = load_config_from_path(config_file).await?;
@@ -112,10 +112,7 @@ async fn handle_generate(agent_filter: Option<String>, config_path: Option<Strin
 
     if enabled_agents.is_empty() {
         println!("❌ No enabled agents found");
-        println!(
-            "💡 Please enable agents in the agents section of {}",
-            DEFAULT_CONFIG_FILE
-        );
+        println!("💡 Please enable agents in the agents section of {DEFAULT_CONFIG_FILE}");
         return Ok(());
     }
 
@@ -125,11 +122,12 @@ async fn handle_generate(agent_filter: Option<String>, config_path: Option<Strin
             Ok(files) => {
                 for file in files {
                     write_generated_file(&file).await?;
-                    println!("📄 {}", file.path);
+                    let file_path = &file.path;
+                    println!("📄 {file_path}");
                 }
             }
             Err(e) => {
-                println!("❌ Error generating files for {}: {}", agent_name, e);
+                println!("❌ Error generating files for {agent_name}: {e}");
             }
         }
     }
@@ -141,7 +139,7 @@ async fn handle_generate(agent_filter: Option<String>, config_path: Option<Strin
 /// Handle validate command
 async fn handle_validate(config_path: Option<String>) -> Result<()> {
     let config_file = config_path.as_deref().unwrap_or(DEFAULT_CONFIG_FILE);
-    println!("Validating configuration file: {}", config_file);
+    println!("Validating configuration file: {config_file}");
 
     let config = load_config_from_path(config_file)
         .await
@@ -158,8 +156,10 @@ async fn handle_validate(config_path: Option<String>) -> Result<()> {
     println!("✅ Configuration file is valid");
 
     // Display basic information
-    println!("  Version: {}", config.version);
-    println!("  Output mode: {:?}", config.output_mode);
+    let version = &config.version;
+    println!("  Version: {version}");
+    let output_mode = &config.output_mode;
+    println!("  Output mode: {output_mode:?}");
     println!(
         "  Documentation directory: {} (exists)",
         config.base_docs_dir
@@ -170,7 +170,8 @@ async fn handle_validate(config_path: Option<String>) -> Result<()> {
     if enabled.is_empty() {
         println!("  Enabled agents: none");
     } else {
-        println!("  Enabled agents: {}", enabled.join(", "));
+        let enabled_agents = enabled.join(", ");
+        println!("  Enabled agents: {enabled_agents}");
     }
 
     Ok(())
@@ -196,8 +197,9 @@ fn get_enabled_agents(config: &AIContextConfig, filter: Option<String>) -> Vec<S
             if all_enabled.contains(&agent_name) {
                 vec![agent_name]
             } else {
-                println!("❌ Agent '{}' is not enabled", agent_name);
-                println!("💡 Available agents: {}", all_enabled.join(", "));
+                println!("❌ Agent '{agent_name}' is not enabled");
+                let available_agents = all_enabled.join(", ");
+                println!("💡 Available agents: {available_agents}");
                 vec![]
             }
         }
@@ -239,7 +241,7 @@ async fn generate_agent_files(
             let agent = KiroAgent::new(config.clone());
             agent.generate().await
         }
-        _ => Err(anyhow::anyhow!("Unsupported agent: {}", agent_name)),
+        _ => Err(anyhow::anyhow!("Unsupported agent: {agent_name}")),
     }
 }
 
@@ -361,7 +363,7 @@ invalid_yaml: [
                 assert_eq!(path, DEFAULT_CONFIG_FILE);
             }
             Err(e) => {
-                panic!("Unexpected error type: {:?}", e);
+                panic!("Unexpected error type: {e:?}");
             }
         }
     }

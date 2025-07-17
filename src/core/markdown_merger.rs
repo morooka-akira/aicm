@@ -63,7 +63,8 @@ impl MarkdownMerger {
                     .to_string_lossy()
                     .replace('\\', "/"); // Normalize path separators for cross-platform compatibility
 
-                merged_content.push_str(&format!("# {relative_path}\n\n{}\n\n", content.trim()));
+                let trimmed_content = content.trim();
+                merged_content.push_str(&format!("# {relative_path}\n\n{trimmed_content}\n\n"));
             }
         }
 
@@ -100,14 +101,12 @@ impl MarkdownMerger {
                         .to_string_lossy()
                         .replace('\\', "/"); // Normalize path separators for cross-platform compatibility
 
-                    merged_content.push_str(&format!(
-                        "# {}\n\n{}\n\n",
-                        relative_path,
-                        content.trim()
-                    ));
+                    let trimmed_content = content.trim();
+                    merged_content.push_str(&format!("# {relative_path}\n\n{trimmed_content}\n\n"));
                 } else {
                     // Add content only without filename header
-                    merged_content.push_str(&format!("{}\n\n", content.trim()));
+                    let trimmed_content = content.trim();
+                    merged_content.push_str(&format!("{trimmed_content}\n\n"));
                 }
             }
         }

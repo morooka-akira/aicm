@@ -156,7 +156,8 @@ mod tests {
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
-        let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
+        let temp_dir_path = temp_dir.path().to_string_lossy();
+        let expected_path = format!("{temp_dir_path}/.clinerules");
         assert_eq!(files[0].path, expected_path); // No extension
     }
 
@@ -176,7 +177,8 @@ mod tests {
 
         let files = agent.generate().await.unwrap();
         assert_eq!(files.len(), 1);
-        let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
+        let temp_dir_path = temp_dir.path().to_string_lossy();
+        let expected_path = format!("{temp_dir_path}/.clinerules");
         assert_eq!(files[0].path, expected_path);
 
         // Confirm filename header is included
@@ -208,8 +210,9 @@ mod tests {
 
         // Check filenames and paths
         let paths: Vec<&String> = files.iter().map(|f| &f.path).collect();
-        let expected_path1 = format!("{}/.clinerules/file1.md", temp_dir.path().to_string_lossy());
-        let expected_path2 = format!("{}/.clinerules/file2.md", temp_dir.path().to_string_lossy());
+        let temp_dir_path = temp_dir.path().to_string_lossy();
+        let expected_path1 = format!("{temp_dir_path}/.clinerules/file1.md");
+        let expected_path2 = format!("{temp_dir_path}/.clinerules/file2.md");
         assert!(paths.contains(&&expected_path1));
         assert!(paths.contains(&&expected_path2));
 
@@ -259,7 +262,8 @@ mod tests {
             ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let output_path = agent.get_merged_output_path();
-        let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
+        let temp_dir_path = temp_dir.path().to_string_lossy();
+        let expected_path = format!("{temp_dir_path}/.clinerules");
         assert_eq!(output_path, expected_path); // No extension
     }
 
@@ -271,7 +275,8 @@ mod tests {
             ClineAgent::new_with_base_dir(config, temp_dir.path().to_string_lossy().to_string());
 
         let rules_dir = agent.get_split_rules_dir();
-        let expected_path = format!("{}/.clinerules", temp_dir.path().to_string_lossy());
+        let temp_dir_path = temp_dir.path().to_string_lossy();
+        let expected_path = format!("{temp_dir_path}/.clinerules");
         assert_eq!(rules_dir, expected_path); // Folder
     }
 

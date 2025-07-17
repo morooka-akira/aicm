@@ -232,7 +232,10 @@ impl CursorAgent {
         } else if let Some(globs) = &rule.globs {
             // Auto Attached: description:, globs: value, alwaysApply: false
             let globs_value = match globs.len() {
-                1 => format!(" {}", globs[0]),
+                1 => {
+                    let glob = &globs[0];
+                    format!(" {glob}")
+                }
                 len if len > 1 => {
                     let globs_list = globs
                         .iter()
