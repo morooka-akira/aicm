@@ -63,7 +63,7 @@ impl MarkdownMerger {
                     .to_string_lossy()
                     .replace('\\', "/"); // Normalize path separators for cross-platform compatibility
 
-                merged_content.push_str(&format!("# {}\n\n{}\n\n", relative_path, content.trim()));
+                merged_content.push_str(&format!("# {relative_path}\n\n{}\n\n", content.trim()));
             }
         }
 

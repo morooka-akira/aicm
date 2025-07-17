@@ -77,10 +77,10 @@ impl ClineAgent {
             let safe_name = base_name.replace(['/', '\\'], "_"); // Convert path separators to underscores
 
             // Use original filename (no number prefix)
-            let output_filename = format!("{}.md", safe_name);
+            let output_filename = format!("{safe_name}.md");
 
             generated_files.push(GeneratedFile::new(
-                format!("{}/{}", rules_dir, output_filename),
+                format!("{rules_dir}/{output_filename}"),
                 content,
             ));
         }
@@ -91,7 +91,7 @@ impl ClineAgent {
     /// Get output path for merged mode
     fn get_merged_output_path(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
-            format!("{}/.clinerules", base_dir)
+            format!("{base_dir}/.clinerules")
         } else {
             ".clinerules".to_string() // No extension
         }
@@ -100,7 +100,7 @@ impl ClineAgent {
     /// Get rules directory path for split mode
     fn get_split_rules_dir(&self) -> String {
         if let Some(base_dir) = &self.base_dir {
-            format!("{}/.clinerules", base_dir)
+            format!("{base_dir}/.clinerules")
         } else {
             ".clinerules".to_string() // Folder
         }

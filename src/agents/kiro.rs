@@ -44,7 +44,7 @@ impl KiroAgent {
 
     /// Get split mode output path (.kiro/steering/{filename})
     fn get_split_output_path(&self, filename: &str) -> String {
-        format!(".kiro/steering/{}", filename)
+        format!(".kiro/steering/{filename}")
     }
 
     /// Sanitize filename for file system safety
