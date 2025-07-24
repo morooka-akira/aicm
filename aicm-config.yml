@@ -29,4 +29,14 @@ agents:
 
   codex: true
   gemini: true
-  kiro: true
+  kiro:
+    split_config:
+      rules:
+        - inclusion: always
+          file_patterns: ["*project*"]
+        - inclusion: always
+          file_patterns: ["*rules*"]
+        - inclusion: fileMatch
+          file_patterns: ["*rust*"]
+          match_pattern: "**/*.rs"
+

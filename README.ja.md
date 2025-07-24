@@ -87,7 +87,7 @@ flowchart LR
 | **✅ Claude Code**    | `CLAUDE.md`                              | 統合コンテキストファイル           |
 | **✅ OpenAI Codex**   | `AGENTS.md`                              | 統合コンテキストファイル           |
 | **✅ Google Gemini**  | `GEMINI.md`                              | 統合コンテキストファイル           |
-| **✅ Kiro**           | `.kiro/steering/*.md`                    | 分割Markdownファイル               |
+| **✅ Kiro**           | `.kiro/steering/*.md`                    | 分割ファイル、inclusion modes      |
 
 ## 🚀 インストール
 
@@ -233,11 +233,23 @@ agents:
         note: "API仕様書"
       - path: "/absolute/path/to/config.md"
 
+  # Kiro with inclusion modes
+  kiro:
+    enabled: true
+    split_config:
+      rules:
+        - file_patterns: ["*project*", "*readme*"]
+          inclusion: always  # 常にすべてのインタラクションで含まれる
+        - file_patterns: ["*api*", "*service*"]
+          inclusion: fileMatch  # マッチするファイルでのみ含まれる
+          match_pattern: "**/*.ts"
+        - file_patterns: ["*troubleshooting*", "*guide*"]
+          inclusion: manual  # #filename参照で手動で含まれる
+
   # シンプル設定
   cline: false
   codex: false
   gemini: false
-  kiro: false
 ```
 
 ### 外部設定ファイル
@@ -276,6 +288,8 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.claude.import_files`                       | list               | -    | -                | @filepath記法でインポートするファイル     |
 | `agents.claude.import_files[].path`                | string             | ✓    | -                | ファイルパス（絶対、相対、または~/）      |
 | `agents.claude.import_files[].note`                | string             | -    | -                | ファイルの説明（オプション）              |
+| `agents.kiro.split_config.rules[].inclusion`       | enum               | ✓    | -                | inclusion mode (always/fileMatch/manual)  |
+| `agents.kiro.split_config.rules[].match_pattern`   | string             | -    | -                | fileMatchモード用のファイルパターン       |
 
 ## 🏗️ プロジェクト構造
 

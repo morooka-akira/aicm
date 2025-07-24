@@ -87,7 +87,7 @@ flowchart LR
 | **✅ Claude Code**    | `CLAUDE.md`                              | Merged context file              |
 | **✅ OpenAI Codex**   | `AGENTS.md`                              | Merged context file              |
 | **✅ Google Gemini**  | `GEMINI.md`                              | Merged context file              |
-| **✅ Kiro**           | `.kiro/steering/*.md`                    | Split markdown files             |
+| **✅ Kiro**           | `.kiro/steering/*.md`                    | Split files, inclusion modes     |
 
 ## 🚀 Installation
 
@@ -233,11 +233,23 @@ agents:
         note: "API documentation"
       - path: "/absolute/path/to/config.md"
 
+  # Kiro with inclusion modes
+  kiro:
+    enabled: true
+    split_config:
+      rules:
+        - file_patterns: ["*project*", "*readme*"]
+          inclusion: always  # Always included in every interaction
+        - file_patterns: ["*api*", "*service*"]
+          inclusion: fileMatch  # Included for matching files
+          match_pattern: "**/*.ts"
+        - file_patterns: ["*troubleshooting*", "*guide*"]
+          inclusion: manual  # Included via #filename reference
+
   # Simple configurations
   cline: false
   codex: false
   gemini: false
-  kiro: false
 ```
 
 ### External Configuration Files
@@ -276,6 +288,8 @@ aicm generate --agent cursor --config custom.yaml
 | `agents.claude.import_files`                       | list               | -        | -                | Files to import using @filepath notation |
 | `agents.claude.import_files[].path`                | string             | ✓        | -                | File path (absolute, relative, or ~/)    |
 | `agents.claude.import_files[].note`                | string             | -        | -                | Optional description for the file        |
+| `agents.kiro.split_config.rules[].inclusion`       | enum               | ✓        | -                | Inclusion mode (always/fileMatch/manual) |
+| `agents.kiro.split_config.rules[].match_pattern`   | string             | -        | -                | File pattern for fileMatch mode          |
 
 ## 🏗️ Project Structure
 
