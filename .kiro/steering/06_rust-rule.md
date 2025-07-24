@@ -1,3 +1,7 @@
+---
+inclusion: fileMatch
+fileMatchPattern: "**/*.rs"
+---
 # rust 固有のルール
 
 ## 実装時の注意点
