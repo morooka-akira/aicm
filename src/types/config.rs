@@ -310,6 +310,41 @@ pub struct KiroAgentConfig {
     /// Base documentation directory (optional, overrides global setting)
     #[serde(default)]
     pub base_docs_dir: Option<String>,
+    /// Detailed settings for split mode (optional)
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub split_config: Option<KiroSplitConfig>,
+}
+
+/// Kiro split mode configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct KiroSplitConfig {
+    /// Rule array
+    #[serde(default)]
+    pub rules: Vec<KiroInclusionRule>,
+}
+
+/// Kiro inclusion rule configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct KiroInclusionRule {
+    /// Target Markdown filename patterns
+    pub file_patterns: Vec<String>,
+    /// Inclusion mode (always, fileMatch, manual)
+    pub inclusion: InclusionMode,
+    /// File match pattern for fileMatch mode
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub match_pattern: Option<String>,
+}
+
+/// Inclusion mode types for Kiro
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum InclusionMode {
+    /// Always included in every Kiro interaction
+    Always,
+    /// Included only for files matching the pattern
+    FileMatch,
+    /// Manually included via #filename reference
+    Manual,
 }
 
 /// Default value: true
@@ -638,6 +673,16 @@ impl GitHubConfig {
     }
 }
 
+impl KiroConfig {
+    /// Get detailed configuration
+    pub fn get_advanced_config(&self) -> Option<&KiroAgentConfig> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Advanced(config) => Some(config),
+        }
+    }
+}
+
 impl AgentConfigTrait for ClaudeConfig {
     fn is_enabled(&self) -> bool {
         match self {
@@ -945,6 +990,7 @@ mod tests {
             include_filenames: None,
             output_mode: Some(OutputMode::Merged), // Set but ignored
             base_docs_dir: None,
+            split_config: None,
         });
 
         // Kiro is always split
@@ -1262,5 +1308,122 @@ agents:
         assert_eq!(config.get_effective_base_docs_dir("github"), "./ai-context");
         assert_eq!(config.get_effective_base_docs_dir("claude"), "./ai-context");
         assert_eq!(config.get_effective_base_docs_dir("kiro"), "./ai-context");
+    }
+
+    #[test]
+    fn test_kiro_inclusion_mode_serialization() {
+        let always = InclusionMode::Always;
+        let yaml = serde_yaml::to_string(&always).unwrap();
+        assert_eq!(yaml.trim(), "always");
+
+        let file_match = InclusionMode::FileMatch;
+        let yaml = serde_yaml::to_string(&file_match).unwrap();
+        assert_eq!(yaml.trim(), "fileMatch");
+
+        let manual = InclusionMode::Manual;
+        let yaml = serde_yaml::to_string(&manual).unwrap();
+        assert_eq!(yaml.trim(), "manual");
+    }
+
+    #[test]
+    fn test_kiro_inclusion_rule_serialization() {
+        let rule = KiroInclusionRule {
+            file_patterns: vec!["*project*".to_string()],
+            inclusion: InclusionMode::FileMatch,
+            match_pattern: Some("**/*.md".to_string()),
+        };
+
+        let yaml = serde_yaml::to_string(&rule).unwrap();
+        assert!(yaml.contains("file_patterns"));
+        assert!(yaml.contains("*project*"));
+        assert!(yaml.contains("inclusion: fileMatch"));
+        assert!(yaml.contains("match_pattern"));
+
+        // Test deserialization
+        let deserialized: KiroInclusionRule = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(deserialized.file_patterns, vec!["*project*".to_string()]);
+        assert_eq!(deserialized.inclusion, InclusionMode::FileMatch);
+        assert_eq!(deserialized.match_pattern, Some("**/*.md".to_string()));
+    }
+
+    #[test]
+    fn test_kiro_split_config_parsing() {
+        let yaml = r#"
+rules:
+  - file_patterns: ["*project*"]
+    inclusion: always
+  - file_patterns: ["*api*"]
+    inclusion: fileMatch
+    match_pattern: "**/*.ts"
+  - file_patterns: ["*guide*"]
+    inclusion: manual
+"#;
+
+        let split_config: KiroSplitConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(split_config.rules.len(), 3);
+
+        // Rule 1: always
+        assert_eq!(split_config.rules[0].file_patterns, vec!["*project*"]);
+        assert_eq!(split_config.rules[0].inclusion, InclusionMode::Always);
+        assert_eq!(split_config.rules[0].match_pattern, None);
+
+        // Rule 2: fileMatch
+        assert_eq!(split_config.rules[1].file_patterns, vec!["*api*"]);
+        assert_eq!(split_config.rules[1].inclusion, InclusionMode::FileMatch);
+        assert_eq!(
+            split_config.rules[1].match_pattern,
+            Some("**/*.ts".to_string())
+        );
+
+        // Rule 3: manual
+        assert_eq!(split_config.rules[2].file_patterns, vec!["*guide*"]);
+        assert_eq!(split_config.rules[2].inclusion, InclusionMode::Manual);
+        assert_eq!(split_config.rules[2].match_pattern, None);
+    }
+
+    #[test]
+    fn test_kiro_advanced_config_with_split_config() {
+        let yaml = r#"
+version: "1.0"
+base_docs_dir: "./ai-context"
+agents:
+  kiro:
+    enabled: true
+    split_config:
+      rules:
+        - file_patterns: ["*project*", "*readme*"]
+          inclusion: always
+        - file_patterns: ["*api*", "*service*"]
+          inclusion: fileMatch
+          match_pattern: "**/*.ts"
+        - file_patterns: ["*troubleshooting*"]
+          inclusion: manual
+"#;
+
+        let config: AIContextConfig = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.agents.kiro.is_enabled());
+
+        let kiro_config = config.agents.kiro.get_advanced_config().unwrap();
+        assert!(kiro_config.split_config.is_some());
+
+        let split_config = kiro_config.split_config.as_ref().unwrap();
+        assert_eq!(split_config.rules.len(), 3);
+
+        // Verify rules
+        assert_eq!(split_config.rules[0].file_patterns.len(), 2);
+        assert_eq!(split_config.rules[0].inclusion, InclusionMode::Always);
+
+        assert_eq!(split_config.rules[1].file_patterns.len(), 2);
+        assert_eq!(split_config.rules[1].inclusion, InclusionMode::FileMatch);
+        assert_eq!(
+            split_config.rules[1].match_pattern,
+            Some("**/*.ts".to_string())
+        );
+
+        assert_eq!(
+            split_config.rules[2].file_patterns,
+            vec!["*troubleshooting*"]
+        );
+        assert_eq!(split_config.rules[2].inclusion, InclusionMode::Manual);
     }
 }

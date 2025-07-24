@@ -56,6 +56,22 @@ AI Context Management Tool (AICM) は、複数の AI コーディングエージ
 - **形式**: 純粋な Markdown
 - **モード**: merged のみ（Codex の仕様）
 
+### 🚧 Google Gemini CLI
+
+- **出力先**: `GEMINI.md`
+- **形式**: 純粋な Markdown
+- **モード**: merged のみ（Gemini の仕様）
+
+### 🚧 Kiro
+
+- **出力先**: `.kiro/steering/*.md`
+- **形式**: YAML frontmatter + Markdown
+- **モード**: split のみ（Kiro の仕様）
+- **特徴**: Steering 機能のための inclusion modes サポート
+  - `always`: すべてのインタラクションで自動的に読み込まれる
+  - `fileMatch`: 指定されたパターンにマッチするファイルでのみ自動的に含まれる
+  - `manual`: `#filename` で参照することで手動で含まれる
+
 ## 設定ファイル形式
 
 ### 基本構造

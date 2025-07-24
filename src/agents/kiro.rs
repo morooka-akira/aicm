@@ -6,8 +6,9 @@
  */
 
 use crate::core::MarkdownMerger;
-use crate::types::{AIContextConfig, GeneratedFile};
+use crate::types::{AIContextConfig, GeneratedFile, InclusionMode, KiroInclusionRule};
 use anyhow::Result;
+use glob::Pattern;
 
 /// Kiro agent
 pub struct KiroAgent {
@@ -32,11 +33,21 @@ impl KiroAgent {
         let files = merger.get_individual_files().await?;
         let mut generated_files = Vec::new();
 
+        // Get Kiro split config rules if available
+        let rules = self.get_inclusion_rules();
+
         for (file_name, content) in files {
             let sanitized_name = self.sanitize_filename(&file_name);
             let output_path = self.get_split_output_path(&sanitized_name);
 
-            generated_files.push(GeneratedFile::new(output_path, content));
+            // Generate content with YAML frontmatter if rules are defined
+            let final_content = if let Some(rules) = &rules {
+                self.add_yaml_frontmatter(&file_name, content, rules)?
+            } else {
+                content
+            };
+
+            generated_files.push(GeneratedFile::new(output_path, final_content));
         }
 
         Ok(generated_files)
@@ -52,12 +63,73 @@ impl KiroAgent {
         // Convert path separators to hyphens for file system safety
         filename.replace(['/', '\\'], "-")
     }
+
+    /// Get inclusion rules from Kiro configuration
+    fn get_inclusion_rules(&self) -> Option<&Vec<KiroInclusionRule>> {
+        self.config
+            .agents
+            .kiro
+            .get_advanced_config()
+            .and_then(|config| config.split_config.as_ref())
+            .map(|split_config| &split_config.rules)
+    }
+
+    /// Add YAML frontmatter based on matching rules
+    fn add_yaml_frontmatter(
+        &self,
+        file_name: &str,
+        content: String,
+        rules: &[KiroInclusionRule],
+    ) -> Result<String> {
+        // Find the first matching rule
+        for rule in rules {
+            if self.matches_any_pattern(file_name, &rule.file_patterns)? {
+                let yaml_header = self.create_yaml_header(rule)?;
+                return Ok(format!("{}\n{}", yaml_header, content));
+            }
+        }
+
+        // No matching rule found, return content as-is
+        Ok(content)
+    }
+
+    /// Check if filename matches any of the given patterns
+    fn matches_any_pattern(&self, file_name: &str, patterns: &[String]) -> Result<bool> {
+        for pattern_str in patterns {
+            let pattern = Pattern::new(pattern_str)?;
+            if pattern.matches(file_name) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Create YAML frontmatter header based on inclusion rule
+    fn create_yaml_header(&self, rule: &KiroInclusionRule) -> Result<String> {
+        match rule.inclusion {
+            InclusionMode::Always => Ok("---\ninclusion: always\n---".to_string()),
+            InclusionMode::FileMatch => {
+                if let Some(match_pattern) = &rule.match_pattern {
+                    Ok(format!(
+                        "---\ninclusion: fileMatch\nfileMatchPattern: \"{}\"\n---",
+                        match_pattern
+                    ))
+                } else {
+                    // fileMatch mode requires match_pattern
+                    anyhow::bail!(
+                        "fileMatch inclusion mode requires match_pattern to be specified"
+                    );
+                }
+            }
+            InclusionMode::Manual => Ok("---\ninclusion: manual\n---".to_string()),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{AgentConfig, OutputMode};
+    use crate::types::{AgentConfig, KiroAgentConfig, KiroConfig, KiroSplitConfig, OutputMode};
     use tempfile::tempdir;
     use tokio::fs;
 
@@ -279,5 +351,214 @@ mod tests {
         assert!(paths.contains(&&".kiro/steering/docs-overview.md".to_string()));
         assert!(paths.contains(&&".kiro/steering/guides-getting-started.md".to_string()));
         assert!(paths.contains(&&".kiro/steering/docs-api-reference.md".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_generate_with_inclusion_rules_always() {
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // Create test file
+        fs::write(docs_path.join("project.md"), "# Project\nProject content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy());
+
+        // Configure Kiro with inclusion rules
+        config.agents.kiro = KiroConfig::Advanced(KiroAgentConfig {
+            enabled: true,
+            output_mode: None,
+            include_filenames: None,
+            base_docs_dir: None,
+            split_config: Some(KiroSplitConfig {
+                rules: vec![KiroInclusionRule {
+                    file_patterns: vec!["*project*".to_string()],
+                    inclusion: InclusionMode::Always,
+                    match_pattern: None,
+                }],
+            }),
+        });
+
+        let agent = KiroAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].path, ".kiro/steering/project.md");
+
+        // Check YAML frontmatter
+        assert!(files[0].content.starts_with("---\ninclusion: always\n---"));
+        assert!(files[0].content.contains("# Project"));
+        assert!(files[0].content.contains("Project content"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_with_inclusion_rules_file_match() {
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // Create test files
+        fs::write(docs_path.join("api.md"), "# API\nAPI docs")
+            .await
+            .unwrap();
+        fs::write(docs_path.join("guide.md"), "# Guide\nGuide content")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy());
+
+        // Configure Kiro with fileMatch rules
+        config.agents.kiro = KiroConfig::Advanced(KiroAgentConfig {
+            enabled: true,
+            output_mode: None,
+            include_filenames: None,
+            base_docs_dir: None,
+            split_config: Some(KiroSplitConfig {
+                rules: vec![
+                    KiroInclusionRule {
+                        file_patterns: vec!["*api*".to_string()],
+                        inclusion: InclusionMode::FileMatch,
+                        match_pattern: Some("**/*.ts".to_string()),
+                    },
+                    KiroInclusionRule {
+                        file_patterns: vec!["*guide*".to_string()],
+                        inclusion: InclusionMode::Manual,
+                        match_pattern: None,
+                    },
+                ],
+            }),
+        });
+
+        let agent = KiroAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 2);
+
+        // Check api.md has fileMatch frontmatter
+        let api_file = files.iter().find(|f| f.path.contains("api.md")).unwrap();
+        assert!(api_file
+            .content
+            .starts_with("---\ninclusion: fileMatch\nfileMatchPattern: \"**/*.ts\"\n---"));
+
+        // Check guide.md has manual frontmatter
+        let guide_file = files.iter().find(|f| f.path.contains("guide.md")).unwrap();
+        assert!(guide_file
+            .content
+            .starts_with("---\ninclusion: manual\n---"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_with_multiple_pattern_match() {
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // Create test files
+        fs::write(docs_path.join("readme.md"), "# Readme")
+            .await
+            .unwrap();
+        fs::write(docs_path.join("project.md"), "# Project")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy());
+
+        // Configure with multiple patterns in one rule
+        config.agents.kiro = KiroConfig::Advanced(KiroAgentConfig {
+            enabled: true,
+            output_mode: None,
+            include_filenames: None,
+            base_docs_dir: None,
+            split_config: Some(KiroSplitConfig {
+                rules: vec![KiroInclusionRule {
+                    file_patterns: vec!["*readme*".to_string(), "*project*".to_string()],
+                    inclusion: InclusionMode::Always,
+                    match_pattern: None,
+                }],
+            }),
+        });
+
+        let agent = KiroAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 2);
+
+        // Both files should have always inclusion
+        for file in &files {
+            assert!(file.content.starts_with("---\ninclusion: always\n---"));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_generate_without_inclusion_rules() {
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // Create test file
+        fs::write(docs_path.join("test.md"), "# Test\nNo rules")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy());
+
+        // Configure Kiro without split_config
+        config.agents.kiro = KiroConfig::Advanced(KiroAgentConfig {
+            enabled: true,
+            output_mode: None,
+            include_filenames: None,
+            base_docs_dir: None,
+            split_config: None,
+        });
+
+        let agent = KiroAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 1);
+
+        // Should not have YAML frontmatter
+        assert!(!files[0].content.starts_with("---"));
+        assert_eq!(files[0].content, "# Test\nNo rules");
+    }
+
+    #[tokio::test]
+    async fn test_pattern_matching_priority() {
+        let temp_dir = tempdir().unwrap();
+        let docs_path = temp_dir.path();
+
+        // Create test file that matches multiple patterns
+        fs::write(docs_path.join("api-project.md"), "# API Project")
+            .await
+            .unwrap();
+
+        let mut config = create_test_config(&docs_path.to_string_lossy());
+
+        // Configure with overlapping rules - first match wins
+        config.agents.kiro = KiroConfig::Advanced(KiroAgentConfig {
+            enabled: true,
+            output_mode: None,
+            include_filenames: None,
+            base_docs_dir: None,
+            split_config: Some(KiroSplitConfig {
+                rules: vec![
+                    KiroInclusionRule {
+                        file_patterns: vec!["*api*".to_string()],
+                        inclusion: InclusionMode::Always,
+                        match_pattern: None,
+                    },
+                    KiroInclusionRule {
+                        file_patterns: vec!["*project*".to_string()],
+                        inclusion: InclusionMode::Manual,
+                        match_pattern: None,
+                    },
+                ],
+            }),
+        });
+
+        let agent = KiroAgent::new(config);
+        let files = agent.generate().await.unwrap();
+
+        assert_eq!(files.len(), 1);
+
+        // First matching rule should apply (always)
+        assert!(files[0].content.starts_with("---\ninclusion: always\n---"));
     }
 }
