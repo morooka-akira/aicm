@@ -85,7 +85,7 @@ impl KiroAgent {
         for rule in rules {
             if self.matches_any_pattern(file_name, &rule.file_patterns)? {
                 let yaml_header = self.create_yaml_header(rule)?;
-                return Ok(format!("{}\n{}", yaml_header, content));
+                return Ok(format!("{yaml_header}\n{content}"));
             }
         }
 
@@ -111,8 +111,7 @@ impl KiroAgent {
             InclusionMode::FileMatch => {
                 if let Some(match_pattern) = &rule.match_pattern {
                     Ok(format!(
-                        "---\ninclusion: fileMatch\nfileMatchPattern: \"{}\"\n---",
-                        match_pattern
+                        "---\ninclusion: fileMatch\nfileMatchPattern: \"{match_pattern}\"\n---"
                     ))
                 } else {
                     // fileMatch mode requires match_pattern
