@@ -20,7 +20,7 @@ jobs:
       new_version: ${{ steps.check_version.outputs.new_version }}
       tag_exists: ${{ steps.check_tag.outputs.tag_exists }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 2
       
